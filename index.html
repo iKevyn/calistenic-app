@@ -129,6 +129,7 @@ body{
   box-shadow:0 1px 0 var(--sep);
   overflow:hidden;position:relative;
 }
+
 .ctx-accent-bar{
   position:absolute;top:0;left:0;right:0;height:3px;
   border-radius:var(--r3) var(--r3) 0 0;
@@ -408,27 +409,19 @@ body{
   <!-- HEADER -->
   <div class="page-header">
     <div>
-      <h1 id="hdr-title">Treino</h1>
+      <h1 id="hdr-title">Ren</h1>
       <div class="sub" id="hdr-date"></div>
     </div>
     <div style="display:flex;align-items:center;gap:8px">
       <div id="streak-pill" class="streak-pill">🔥 0 dias</div>
       <!-- Botões de arquivo: exportar (⬇️ salvar arquivo) e importar (☁️ upload de arquivo) -->
-      <button class="file-action-btn" id="exportFileBtn" title="Exportar dados → arquivo .json (salvar no Files)" style="font-size:16px;">📁⬇️</button>
-      <button class="file-action-btn" id="importFileBtn" title="Importar dados ← arquivo .json (carregar do Files)" style="font-size:16px;">📂⬆️</button>
+      <button class="file-action-btn" id="exportFileBtn" title="Exportar dados → arquivo .json (salvar no Files)" style="font-size:16px;">⬇️</button>
+      <button class="file-action-btn" id="importFileBtn" title="Importar dados ← arquivo .json (carregar do Files)" style="font-size:16px;">⬆️</button>
     </div>
   </div>
 
   <!-- WEEK STRIP -->
   <div class="week-strip" id="week-strip"></div>
-
-  <!-- TOP TABS -->
-  <div class="seg" id="top-seg">
-    <button class="seg-btn active" onclick="switchTab('hoje',this,0)">Hoje</button>
-    <button class="seg-btn" onclick="switchTab('progresso',this,1)">Progresso</button>
-    <button class="seg-btn" onclick="switchTab('historico',this,2)">Histórico</button>
-    <button class="seg-btn" onclick="switchTab('templates',this,3)">Templates</button>
-  </div>
 
   <!-- ═══ TAB: HOJE ═══ -->
   <div class="tab active" id="tab-hoje">
@@ -633,7 +626,7 @@ function detectTodayGroup(){
   if(saved) sources.push(...saved.exercises);
   if(!sources.length) return null;
   const cnt={};
-  sources.forEach(e=>{cnt[e.muscle]=(cnt[e.muscle]||0)+e.sets*e.reps;});
+  sources.forEach(e=>{cnt[e.muscle]=(cnt[e.muscle]||0)+(e.isTime?0:e.sets*e.reps);});
   return Object.entries(cnt).sort((a,b)=>b[1]-a[1])[0][0];
 }
 function guessNextGroup(){
@@ -687,7 +680,8 @@ function finishWorkout(){
   if(ex) ex.exercises.push(...S.todayExercises);
   else S.workouts.push({date,exercises:[...S.todayExercises]});
   S.todayExercises=[];
-  save(); renderTodayLog(); updateContextCard(); renderHeatmap(); renderWeekStrip();
+  save(); renderTodayLog(); updateContextCard();updateSuggestion();
+ renderHeatmap(); renderWeekStrip();
   if(currentTab==='progresso') renderProgress();
   toast('✅ Treino salvo!','#007aff');
 }
@@ -761,7 +755,9 @@ function importFromFile(){
         const imported=JSON.parse(e.target.result);
         // validação simples: deve ter workouts/restDays/templates
         if(imported && (Array.isArray(imported.workouts) || Array.isArray(imported.restDays) || Array.isArray(imported.templates))){
-          S=imported;
+          if(confirm('Substituir dados atuais?')){
+  S = imported;
+}
           if(!S.workouts) S.workouts=[];
           if(!S.restDays) S.restDays=[];
           if(!S.templates) S.templates=[];
