@@ -485,23 +485,48 @@ body{
   width: 100%;
   height: 100%;
   background: rgba(0,0,0,0.5);
-  backdrop-filter: blur(4px);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
   z-index: 1000;
   display: flex;
   align-items: center;
   justify-content: center;
   overflow-y: auto;
+  animation: maskIn .22s ease;
+}
+.modal-mask.closing {
+  animation: maskOut .2s ease forwards;
+}
+@keyframes maskIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes maskOut {
+  from { opacity: 1; }
+  to { opacity: 0; }
 }
 .modal-container {
   background: var(--card);
-  border-radius: 20px;
+  border-radius: 24px;
   width: 90%;
   max-width: 340px;
   max-height: 85vh;
   overflow-y: auto;
   padding: 20px;
-  box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+  box-shadow: 0 20px 60px rgba(0,0,0,0.3), 0 0 0 1px rgba(255,255,255,.06);
   margin: 20px 0;
+  animation: sheetUp .28s cubic-bezier(.34,1.3,.64,1);
+}
+.modal-mask.closing .modal-container {
+  animation: sheetDown .2s cubic-bezier(.4,0,1,1) forwards;
+}
+@keyframes sheetUp {
+  from { transform: translateY(32px) scale(.97); opacity: 0; }
+  to   { transform: translateY(0) scale(1);    opacity: 1; }
+}
+@keyframes sheetDown {
+  from { transform: translateY(0) scale(1);    opacity: 1; }
+  to   { transform: translateY(40px) scale(.96); opacity: 0; }
 }
 .modal-header {
   font-size: 20px;
@@ -515,6 +540,64 @@ body{
   justify-content: flex-end;
 }
 
+/* ── LOG ITEM ACTIONS (today + history) ── */
+.log-item-actions {
+  display: flex;
+  gap: 6px;
+  margin-top: 8px;
+}
+.log-item-edit-btn {
+  flex: 1;
+  padding: 7px 0;
+  background: var(--card2);
+  border: none;
+  border-radius: 9px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--blue);
+  cursor: pointer;
+  transition: opacity .15s, transform .1s;
+}
+.log-item-edit-btn:active { opacity:.7; transform: scale(.97); }
+.log-item-del-btn {
+  flex: 1;
+  padding: 7px 0;
+  background: rgba(255,59,48,.08);
+  border: none;
+  border-radius: 9px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--red);
+  cursor: pointer;
+  transition: opacity .15s, transform .1s;
+}
+.log-item-del-btn:active { opacity:.7; transform: scale(.97); }
+
+/* ── SKELETON / SPINNER for async ops ── */
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+.skeleton { animation: pulse 1.4s ease-in-out infinite; background: var(--card2); border-radius: 8px; }
+
+/* ── EDIT EXERCISE CARD in modal ── */
+.edit-ex-card {
+  border-bottom: 1px solid var(--sep);
+  padding: 14px 0;
+  animation: fadeSlideIn .22s ease;
+}
+.edit-ex-card:last-child { border-bottom: none; }
+@keyframes fadeSlideIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ── TODAY log item — editable highlight ── */
+.log-item.editing {
+  background: rgba(0,122,255,.04);
+  border-radius: 12px;
+  padding: 11px 10px;
+  margin: 0 -10px;
+  transition: background .2s;
+}
+
 /* ── TAB CONTENT ── */
 .tab{display:none}
 .tab.active{display:block}
@@ -526,6 +609,31 @@ body{
   box-shadow:0 4px 20px rgba(0,0,0,.25);white-space:nowrap;
 }
 .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+/* ── FORM CARD ANIMATION ── */
+#form-card-wrapper { animation: formFadeIn .22s cubic-bezier(.34,1.3,.64,1); }
+@keyframes formFadeIn {
+  from { opacity: 0; transform: translateY(16px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes formFadeOut {
+  from { opacity: 1; transform: translateY(0); }
+  to   { opacity: 0; transform: translateY(10px); }
+}
+
+/* ── LOG ITEMS STAGGER ── */
+.log-item {
+  animation: itemIn .2s ease both;
+}
+#today-log .log-item:nth-child(1) { animation-delay: .03s; }
+#today-log .log-item:nth-child(2) { animation-delay: .07s; }
+#today-log .log-item:nth-child(3) { animation-delay: .11s; }
+#today-log .log-item:nth-child(4) { animation-delay: .15s; }
+#today-log .log-item:nth-child(5) { animation-delay: .19s; }
+@keyframes itemIn {
+  from { opacity: 0; transform: translateX(-8px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
 ::-webkit-scrollbar{width:0}
 </style>
 </head>
@@ -676,8 +784,18 @@ document.getElementById('workout-date').value=today();
 
 // ----- UI helpers -----
 function toast(msg,color='#007aff'){const el=document.getElementById('toast');el.textContent=msg;el.style.background=color;el.classList.add('show');clearTimeout(window.toastTimer);window.toastTimer=setTimeout(()=>el.classList.remove('show'),2800);}
-function showAddForm(){document.getElementById('form-card-wrapper').style.display='block';}
-function hideAddForm(){document.getElementById('form-card-wrapper').style.display='none';}
+function showAddForm(){
+  const w=document.getElementById('form-card-wrapper');
+  w.style.display='block';
+  w.style.animation='none';
+  w.offsetHeight; // force reflow
+  w.style.animation='';
+}
+function hideAddForm(){
+  const w=document.getElementById('form-card-wrapper');
+  w.style.animation='formFadeOut .18s ease forwards';
+  setTimeout(()=>{w.style.display='none';w.style.animation='';},180);
+}
 function setSession(type,btn){sessionType=type;document.querySelectorAll('#session-seg .seg-sm-btn').forEach(b=>b.classList.remove('active'));btn.classList.add('active');document.getElementById('workout-fields').style.display=type==='workout'?'block':'none';document.getElementById('rest-fields').style.display=type==='rest'?'block':'none';}
 function setCountType(type,btn){countType=type;document.querySelectorAll('#count-seg .seg-sm-btn').forEach(b=>b.classList.remove('active'));btn.classList.add('active');const isTime=type==='time';document.getElementById('sets-reps-label').textContent=isTime?'Séries × Tempo (segundos)':'Séries × Repetições';document.getElementById('reps-unit').textContent=isTime?'seg':'reps';document.getElementById('reps-input').value=isTime?'30':'10';}
 
@@ -727,6 +845,76 @@ function finishWorkout(){
   toast('✅ Treino salvo!','#007aff');
   hideAddForm();
 }
+// ---- CLOSE MODAL WITH ANIMATION ----
+function closeModal(el){
+  const mask=el.closest('.modal-mask')||el;
+  mask.classList.add('closing');
+  setTimeout(()=>mask.remove(),200);
+}
+
+// ---- EDIT / DELETE TODAY EXERCISES ----
+function deleteTodayExercise(idx){
+  if(!confirm('Remover este exercício?')) return;
+  S.todayExercises.splice(idx,1);
+  save(); renderTodayLog(); updateContextCard();
+  toast('Exercício removido','#ff9500');
+}
+
+function editTodayExercise(idx){
+  const ex=S.todayExercises[idx];
+  if(!ex) return;
+  let modal=document.getElementById('editTodayModal');
+  if(modal) modal.remove();
+  modal=document.createElement('div');
+  modal.id='editTodayModal';
+  modal.className='modal-mask';
+  modal.innerHTML=`<div class="modal-container">
+    <div class="modal-header">✏️ Editar exercício</div>
+    <div class="field"><label>Nome do exercício</label><input type="text" id="etd-name" value="${ex.ex.replace(/"/g,'&quot;')}"></div>
+    <div class="field"><label>Tipo de contagem</label>
+      <div class="seg-sm">
+        <button class="seg-sm-btn ${!ex.isTime?'active':''}" onclick="etdSetType(false,this)">Repetições</button>
+        <button class="seg-sm-btn ${ex.isTime?'active':''}" onclick="etdSetType(true,this)">Tempo (s)</button>
+      </div>
+    </div>
+    <div class="field"><label>Séries × ${ex.isTime?'Tempo (s)':'Repetições'}</label>
+      <div class="sets-row">
+        <input type="number" id="etd-sets" min="1" value="${ex.sets}">
+        <span class="x-sep">×</span>
+        <input type="number" id="etd-reps" min="1" value="${ex.reps}">
+      </div>
+    </div>
+    <div class="field"><label>Notas</label><input type="text" id="etd-notes" value="${(ex.notes||'').replace(/"/g,'&quot;')}" placeholder="Opcional..."></div>
+    <div class="modal-actions">
+      <button class="btn-sm" onclick="closeModal(this)">Cancelar</button>
+      <button class="btn-primary" style="width:auto;padding:10px 20px" onclick="saveTodayEdit(${idx})">Salvar</button>
+    </div>
+  </div>`;
+  document.body.appendChild(modal);
+}
+
+let _etdIsTime=null;
+function etdSetType(isTime, btn){
+  _etdIsTime=isTime;
+  document.querySelectorAll('#editTodayModal .seg-sm .seg-sm-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+}
+function saveTodayEdit(idx){
+  const ex=S.todayExercises[idx]; if(!ex) return;
+  const name=document.getElementById('etd-name').value.trim();
+  if(!name){toast('Nome inválido','#ff3b30');return;}
+  ex.ex=name;
+  ex.sets=parseInt(document.getElementById('etd-sets').value)||1;
+  ex.reps=parseInt(document.getElementById('etd-reps').value)||1;
+  ex.notes=document.getElementById('etd-notes').value.trim();
+  if(_etdIsTime!==null) ex.isTime=_etdIsTime;
+  ex.muscle=MUSCLE_MAP[name]||'core';
+  _etdIsTime=null;
+  save(); renderTodayLog(); updateContextCard();
+  const m=document.getElementById('editTodayModal'); if(m) closeModal(m);
+  toast('Exercício atualizado','#007aff');
+}
+
 function saveRestDay(){
   const date=document.getElementById('workout-date').value||today();
   const notes=document.getElementById('rest-notes').value.trim();
@@ -845,10 +1033,18 @@ function renderTodayLog(){
   wrap.style.display='block';
   const total=S.todayExercises.reduce((a,e)=>a+(e.isTime?0:e.sets*e.reps),0);
   document.getElementById('today-vol').textContent=total;
-  const grouped={};
-  S.todayExercises.forEach(e=>{if(!grouped[e.ex]) grouped[e.ex]={sets:[],muscle:e.muscle};grouped[e.ex].sets.push(e);});
   let html='';
-  Object.entries(grouped).forEach(([ex,data])=>{html+=`<div class="log-item"><div class="log-ex-name">${ex}<span class="badge ${data.muscle}">${MUSCLE_LABEL[data.muscle]}</span></div>`;data.sets.forEach(s=>{const unit=s.isTime?'s':'reps';html+=`<div class="log-detail">${s.sets}×${s.reps}${unit}${s.notes?' · '+s.notes:''}</div>`;});html+=`</div>`;});
+  S.todayExercises.forEach((e,i)=>{
+    const unit=e.isTime?'s':'reps';
+    html+=`<div class="log-item" id="today-item-${i}">
+      <div class="log-ex-name">${e.ex}<span class="badge ${e.muscle}">${MUSCLE_LABEL[e.muscle]}</span></div>
+      <div class="log-detail">${e.sets}×${e.reps}${unit}${e.notes?' · '+e.notes:''}</div>
+      <div class="log-item-actions">
+        <button class="log-item-edit-btn" onclick="editTodayExercise(${i})">✏️ Editar</button>
+        <button class="log-item-del-btn" onclick="deleteTodayExercise(${i})">🗑️ Remover</button>
+      </div>
+    </div>`;
+  });
   logEl.innerHTML=html;
 }
 function updateContextCard(){
@@ -946,120 +1142,105 @@ function openEditWorkout(date){
   modalDiv=document.createElement('div');
   modalDiv.id='editModal';
   modalDiv.className='modal-mask';
-  modalDiv.innerHTML=`<div class="modal-container"><div class="modal-header">Editar treino ${date}</div><div id="edit-ex-list"></div><div class="modal-actions"><button class="btn-primary" onclick="addExerciseToEditModal('${date}')">➕ Adicionar exercício</button><button class="btn-sm" onclick="this.closest('.modal-mask').remove()">Fechar</button></div></div>`;
+  modalDiv.innerHTML=`<div class="modal-container"><div class="modal-header">✏️ Treino ${date}</div><div id="edit-ex-list"></div><div class="modal-actions"><button class="btn-primary" style="width:auto;padding:10px 18px" onclick="addExerciseToEditModal('${date}')">➕ Adicionar</button><button class="btn-sm" onclick="closeModal(this)">Fechar</button></div></div>`;
   document.body.appendChild(modalDiv);
   const listDiv=document.getElementById('edit-ex-list');
-  
-  function refresh(){
+
+  window._editRefresh=function(){
     const w=S.workouts.find(w=>w.date===date);
-    if(!w){modalDiv.remove();return;}
+    if(!w){closeModal(modalDiv);return;}
+    if(w.exercises.length===0){listDiv.innerHTML='<div class="empty" style="padding:30px 0"><p>Nenhum exercício</p></div>';return;}
     listDiv.innerHTML=w.exercises.map((ex,i)=>{
       const isTime=ex.isTime;
-      const countTypeLabel=isTime?'Tempo (seg)':'Repetições';
-      return `<div class="log-item" style="padding:14px 0;border-bottom:1px solid var(--sep)">
+      return `<div class="edit-ex-card" data-idx="${i}">
         <div class="log-ex-name">${ex.ex} <span class="badge ${ex.muscle}">${MUSCLE_LABEL[ex.muscle]}</span></div>
-        <div style="margin-top:8px">
-          <div class="field"><label>Nome do exercício</label><input type="text" id="edit_ex_${i}" value="${ex.ex.replace(/"/g,'&quot;')}"></div>
-          <div class="field"><label>Tipo de contagem</label><div class="seg-sm" style="margin-bottom:8px"><button class="seg-sm-btn ${!isTime?'active':''}" onclick="switchEditCountType(${i}, false)">Repetições</button><button class="seg-sm-btn ${isTime?'active':''}" onclick="switchEditCountType(${i}, true)">Tempo (s)</button></div></div>
-          <div class="sets-row" style="margin-bottom:8px">
-            <div class="field" style="flex:1;margin-bottom:0"><label>Séries</label><input type="number" id="edit_sets_${i}" value="${ex.sets}"></div>
-            <div style="width:20px;display:flex;align-items:flex-end;justify-content:center;margin-bottom:13px"><span style="font-size:18px;color:var(--t3)">×</span></div>
-            <div class="field" style="flex:1;margin-bottom:0"><label>${countTypeLabel}</label><input type="number" id="edit_reps_${i}" value="${ex.reps}"></div>
+        <div style="margin-top:10px">
+          <div class="field"><label>Nome</label><input type="text" id="edit_ex_${i}" value="${ex.ex.replace(/"/g,'&quot;')}"></div>
+          <div class="field"><label>Tipo</label>
+            <div class="seg-sm">
+              <button class="seg-sm-btn ${!isTime?'active':''}" onclick="switchEditCountType('${date}',${i},false,this)">Reps</button>
+              <button class="seg-sm-btn ${isTime?'active':''}" onclick="switchEditCountType('${date}',${i},true,this)">Tempo</button>
+            </div>
+          </div>
+          <div class="field"><label>Séries × ${isTime?'Tempo (s)':'Reps'}</label>
+            <div class="sets-row">
+              <input type="number" id="edit_sets_${i}" value="${ex.sets}">
+              <span class="x-sep">×</span>
+              <input type="number" id="edit_reps_${i}" value="${ex.reps}">
+            </div>
           </div>
           <div class="field"><label>Notas</label><input type="text" id="edit_notes_${i}" value="${(ex.notes||'').replace(/"/g,'&quot;')}"></div>
-          <div style="display:flex;gap:8px;margin-top:8px">
-            <button class="btn-sm" style="background:var(--green);color:white;flex:1" onclick="saveEditExercise('${date}',${i})">✓ Salvar</button>
-            <button class="btn-sm btn-danger" style="flex:1" onclick="deleteEditExercise('${date}',${i})">🗑️ Apagar</button>
+          <div style="display:flex;gap:8px">
+            <button class="log-item-edit-btn" style="background:rgba(52,199,89,.1);color:var(--green)" onclick="saveEditExercise('${date}',${i})">✓ Salvar</button>
+            <button class="log-item-del-btn" onclick="deleteEditExercise('${date}',${i})">🗑️ Apagar</button>
           </div>
         </div>
       </div>`;
     }).join('');
-    if(w.exercises.length===0) listDiv.innerHTML='<div class="empty" style="padding:30px 0"><p>Nenhum exercício</p></div>';
-  }
-  
-  refresh();
-  
-  window.switchEditCountType=(idx,isTime)=>{
-    const countTypeLabel=isTime?'Tempo (seg)':'Repetições';
-    const labelEl=document.querySelector(`#edit-ex-list .log-item:nth-child(${idx+1}) .field:nth-child(3) label`);
-    if(labelEl) labelEl.textContent=countTypeLabel;
-    const btn1=document.querySelector(`#edit-ex-list .log-item:nth-child(${idx+1}) .seg-sm .seg-sm-btn:nth-child(1)`);
-    const btn2=document.querySelector(`#edit-ex-list .log-item:nth-child(${idx+1}) .seg-sm .seg-sm-btn:nth-child(2)`);
-    if(btn1) btn1.classList.toggle('active');
-    if(btn2) btn2.classList.toggle('active');
   };
-  
+  window._editRefresh();
+
+  window.switchEditCountType=(date,idx,isTime,btn)=>{
+    const card=listDiv.querySelector(`[data-idx="${idx}"]`);
+    if(!card) return;
+    card.querySelectorAll('.seg-sm .seg-sm-btn').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    const lbl=card.querySelector('.field:nth-child(3) label');
+    if(lbl) lbl.textContent=`Séries × ${isTime?'Tempo (s)':'Reps'}`;
+  };
+
   window.saveEditExercise=(date,idx)=>{
-    const w=S.workouts.find(w=>w.date===date);
-    if(!w)return;
+    const w=S.workouts.find(w=>w.date===date); if(!w)return;
     const newName=document.getElementById(`edit_ex_${idx}`).value.trim();
     const newSets=parseInt(document.getElementById(`edit_sets_${idx}`).value)||1;
     const newReps=parseInt(document.getElementById(`edit_reps_${idx}`).value)||1;
     const newNotes=document.getElementById(`edit_notes_${idx}`).value.trim();
-    const countTypeBtn=document.querySelector(`#edit-ex-list .log-item:nth-child(${idx+1}) .seg-sm .seg-sm-btn.active`);
-    const newIsTime=countTypeBtn && countTypeBtn.textContent.includes('Tempo');
-    
+    const card=listDiv.querySelector(`[data-idx="${idx}"]`);
+    const activeBtn=card&&card.querySelector('.seg-sm .seg-sm-btn.active');
+    const newIsTime=activeBtn&&activeBtn.textContent.includes('Tempo');
     if(!newName){toast('Nome inválido','#ff3b30');return;}
-    w.exercises[idx].ex=newName;
-    w.exercises[idx].sets=newSets;
-    w.exercises[idx].reps=newReps;
-    w.exercises[idx].notes=newNotes;
-    w.exercises[idx].isTime=newIsTime;
-    w.exercises[idx].muscle=MUSCLE_MAP[newName]||'core';
-    save();
-    refresh();
+    w.exercises[idx]={...w.exercises[idx],ex:newName,sets:newSets,reps:newReps,notes:newNotes,isTime:newIsTime,muscle:MUSCLE_MAP[newName]||'core'};
+    save(); window._editRefresh();
     if(currentTab==='historico') renderHistory();
     if(currentTab==='progresso') renderProgress();
-    renderWeekStrip();
-    renderHeatmap();
-    updateContextCard();
+    renderWeekStrip(); renderHeatmap(); updateContextCard();
     toast('Exercício atualizado','#007aff');
   };
-  
+
   window.deleteEditExercise=(date,idx)=>{
     if(!confirm('Remover este exercício?'))return;
-    const w=S.workouts.find(w=>w.date===date);
-    if(!w)return;
+    const w=S.workouts.find(w=>w.date===date); if(!w)return;
     w.exercises.splice(idx,1);
-    if(w.exercises.length===0)S.workouts=S.workouts.filter(w=>w.date!==date);
-    save();
+    if(w.exercises.length===0) S.workouts=S.workouts.filter(w=>w.date!==date);
+    save(); window._editRefresh();
     if(currentTab==='historico') renderHistory();
     if(currentTab==='progresso') renderProgress();
-    renderWeekStrip();
-    renderHeatmap();
-    updateContextCard();
-    modalDiv.remove();
+    renderWeekStrip(); renderHeatmap(); updateContextCard();
     toast('Exercício removido','#ff9500');
   };
-  
+
   window.addExerciseToEditModal=(date)=>{
     let addModal=document.getElementById('addExToEditModal');
     if(addModal) addModal.remove();
     addModal=document.createElement('div');
     addModal.id='addExToEditModal';
     addModal.className='modal-mask';
-    addModal.innerHTML=`<div class="modal-container" style="max-height:90vh"><div class="modal-header">➕ Adicionar exercício</div><div class="field"><label>Exercício</label><select id="new-ex-select"><option value="">Selecionar...</option><optgroup label="Push 💪"><option>Flexão (Push-up)</option><option>Flexão diamante</option><option>Pike push-up</option><option>Handstand push-up</option><option>Paralela (Dip)</option><option>Ring push-up</option><option>Archer push-up</option></optgroup><optgroup label="Pull 🦾"><option>Barra fixa (Pull-up)</option><option>Barra supinada (Chin-up)</option><option>Muscle-up</option><option>Australian pull-up</option><option>L-sit pull-up</option><option>Archer pull-up</option><option>Typewriter pull-up</option></optgroup><optgroup label="Legs 🦵"><option>Agachamento (Squat)</option><option>Pistol squat</option><option>Afundo (Lunge)</option><option>Nordic curl</option><option>Elevação de quadril</option><option>Bulgarian split squat</option></optgroup><optgroup label="Core 🧘"><option>Prancha (Plank)</option><option>L-sit</option><option>Hanging leg raise</option><option>Dragon flag</option><option>Ab wheel rollout</option><option>Hollow body hold</option><option>Toes to bar</option></optgroup><option value="_custom">+ Exercício personalizado</option></select></div><div id="new-exercise-tip" class="exercise-tip" style="display:none;"></div><div class="field" id="new-custom-field" style="display:none"><label>Nome personalizado</label><input type="text" id="new-custom-input" placeholder="Ex: Ring fly..."></div><div class="field"><label>Tipo de contagem</label><div class="seg-sm"><button class="seg-sm-btn active" onclick="setNewCountType('reps',this)">Repetições</button><button class="seg-sm-btn" onclick="setNewCountType('time',this)">Tempo (s)</button></div></div><div class="field"><label>Séries × Repetições</label><div class="sets-row"><input type="number" id="new-sets-input" min="1" value="3"><span class="x-sep">×</span><input type="number" id="new-reps-input" min="1" value="10"><span style="font-size:12px;color:var(--t3);white-space:nowrap">reps</span></div></div><div class="field"><label>Notas (opcional)</label><input type="text" id="new-notes-input" placeholder="Notas..."></div><div class="modal-actions"><button class="btn-primary" onclick="confirmAddExerciseToEdit('${date}'); addModal.remove(); refresh();">Adicionar</button><button class="btn-sm" onclick="document.getElementById('addExToEditModal').remove()">Cancelar</button></div></div>`;
+    addModal.innerHTML=`<div class="modal-container" style="max-height:90vh"><div class="modal-header">➕ Adicionar exercício</div><div class="field"><label>Exercício</label><select id="new-ex-select"><option value="">Selecionar...</option><optgroup label="Push 💪"><option>Flexão (Push-up)</option><option>Flexão diamante</option><option>Pike push-up</option><option>Handstand push-up</option><option>Paralela (Dip)</option><option>Ring push-up</option><option>Archer push-up</option></optgroup><optgroup label="Pull 🦾"><option>Barra fixa (Pull-up)</option><option>Barra supinada (Chin-up)</option><option>Muscle-up</option><option>Australian pull-up</option><option>L-sit pull-up</option><option>Archer pull-up</option><option>Typewriter pull-up</option></optgroup><optgroup label="Legs 🦵"><option>Agachamento (Squat)</option><option>Pistol squat</option><option>Afundo (Lunge)</option><option>Nordic curl</option><option>Elevação de quadril</option><option>Bulgarian split squat</option></optgroup><optgroup label="Core 🧘"><option>Prancha (Plank)</option><option>L-sit</option><option>Hanging leg raise</option><option>Dragon flag</option><option>Ab wheel rollout</option><option>Hollow body hold</option><option>Toes to bar</option></optgroup><option value="_custom">+ Exercício personalizado</option></select></div><div id="new-exercise-tip" class="exercise-tip" style="display:none;"></div><div class="field" id="new-custom-field" style="display:none"><label>Nome personalizado</label><input type="text" id="new-custom-input" placeholder="Ex: Ring fly..."></div><div class="field"><label>Tipo de contagem</label><div class="seg-sm"><button class="seg-sm-btn active" onclick="setNewCountType('reps',this)">Repetições</button><button class="seg-sm-btn" onclick="setNewCountType('time',this)">Tempo (s)</button></div></div><div class="field"><label>Séries × Repetições</label><div class="sets-row"><input type="number" id="new-sets-input" min="1" value="3"><span class="x-sep">×</span><input type="number" id="new-reps-input" min="1" value="10"><span style="font-size:12px;color:var(--t3);white-space:nowrap">reps</span></div></div><div class="field"><label>Notas (opcional)</label><input type="text" id="new-notes-input" placeholder="Notas..."></div><div class="modal-actions"><button class="btn-sm" onclick="closeModal(this)">Cancelar</button><button class="btn-primary" style="width:auto;padding:10px 20px" onclick="confirmAddExerciseToEdit('${date}')">Adicionar</button></div></div>`;
     document.body.appendChild(addModal);
-    
+
     let newCountType='reps';
     window.setNewCountType=(type,btn)=>{
       newCountType=type;
       document.querySelectorAll('#addExToEditModal .seg-sm .seg-sm-btn').forEach(b=>b.classList.remove('active'));
       btn.classList.add('active');
     };
-    
     document.getElementById('new-ex-select').addEventListener('change', function(){
-      const selected=this.value;
+      const sel=this.value;
       const tipEl=document.getElementById('new-exercise-tip');
-      if(selected && selected!=='_custom' && EXERCISE_TIPS[selected]){
-        tipEl.textContent='💡 '+EXERCISE_TIPS[selected];
-        tipEl.style.display='block';
-      } else {
-        tipEl.style.display='none';
-      }
-      document.getElementById('new-custom-field').style.display=selected==='_custom'?'block':'none';
+      if(sel&&sel!=='_custom'&&EXERCISE_TIPS[sel]){tipEl.textContent='💡 '+EXERCISE_TIPS[sel];tipEl.style.display='block';}
+      else tipEl.style.display='none';
+      document.getElementById('new-custom-field').style.display=sel==='_custom'?'block':'none';
     });
-    
     window.confirmAddExerciseToEdit=(date)=>{
       const sel=document.getElementById('new-ex-select').value;
       const ex=sel==='_custom'?document.getElementById('new-custom-input').value.trim():sel;
@@ -1067,12 +1248,10 @@ function openEditWorkout(date){
       const reps=parseInt(document.getElementById('new-reps-input').value)||1;
       const notes=document.getElementById('new-notes-input').value.trim();
       if(!ex){toast('Selecione um exercício','#ff3b30');return;}
-      const w=S.workouts.find(w=>w.date===date);
-      if(!w)return;
-      const newEntry={ex,sets,reps,isTime:newCountType==='time',notes,muscle:MUSCLE_MAP[ex]||'core'};
-      w.exercises.push(newEntry);
-      save();
-      refresh();
+      const w=S.workouts.find(w=>w.date===date); if(!w)return;
+      w.exercises.push({ex,sets,reps,isTime:newCountType==='time',notes,muscle:MUSCLE_MAP[ex]||'core'});
+      save(); window._editRefresh();
+      const m=document.getElementById('addExToEditModal'); if(m) closeModal(m);
       toast('Exercício adicionado','#007aff');
     };
   };
@@ -1093,70 +1272,69 @@ function editTemplate(idx){
   modal=document.createElement('div');
   modal.id='editTemplateModal';
   modal.className='modal-mask';
-  modal.innerHTML=`<div class="modal-container"><div class="modal-header">✏️ Editar: ${template.name}</div><div class="field"><label>Nome do template</label><input type="text" id="tpl-edit-name" value="${template.name}"></div><div id="tpl-exercises-list"></div><div class="modal-actions"><button class="btn-primary" onclick="addExerciseToTemplate(${idx})">➕ Adicionar</button><button class="btn-sm" onclick="saveTplEdit(${idx})">Salvar</button><button class="btn-sm" onclick="this.closest('.modal-mask').remove()">Fechar</button></div></div>`;
+  modal.innerHTML=`<div class="modal-container"><div class="modal-header">✏️ Editar: ${template.name}</div><div class="field"><label>Nome do template</label><input type="text" id="tpl-edit-name" value="${template.name.replace(/"/g,'&quot;')}"></div><div id="tpl-exercises-list"></div><div class="modal-actions"><button class="btn-primary" style="width:auto;padding:10px 18px" onclick="addExerciseToTemplate(${idx})">➕ Adicionar</button><button class="btn-sm" onclick="saveTplEdit(${idx})">Salvar nome</button><button class="btn-sm" onclick="closeModal(this)">Fechar</button></div></div>`;
   document.body.appendChild(modal);
-  
-  function refresh(){
+
+  window._tplRefresh=function(){
     const exList=document.getElementById('tpl-exercises-list');
     const tpl=S.templates[idx];
-    exList.innerHTML=tpl.exercises.map((ex,i)=>`<div class="log-item" style="padding:12px 0;border-bottom:1px solid var(--sep)"><div class="log-ex-name">${ex.ex} <span class="badge ${ex.muscle}">${MUSCLE_LABEL[ex.muscle]}</span></div><div style="font-size:12px;color:var(--t3);margin-top:4px">${ex.sets}×${ex.reps}${ex.isTime?'seg':'reps'}</div><button class="btn-sm btn-danger" style="width:100%;margin-top:8px" onclick="deleteTplExercise(${idx},${i}); refresh()">Remover</button></div>`).join('');
-  }
-  refresh();
-  
-  window.addExerciseToTemplate=(idx)=>{
+    if(!tpl){closeModal(modal);return;}
+    if(!tpl.exercises.length){exList.innerHTML='<div class="empty" style="padding:20px 0"><p>Sem exercícios</p></div>';return;}
+    exList.innerHTML=tpl.exercises.map((ex,i)=>`<div class="edit-ex-card" data-tidx="${i}">
+      <div class="log-ex-name">${ex.ex} <span class="badge ${ex.muscle}">${MUSCLE_LABEL[ex.muscle]}</span></div>
+      <div style="font-size:12px;color:var(--t3);margin:4px 0 10px">${ex.sets}×${ex.reps}${ex.isTime?'s':'reps'}</div>
+      <button class="log-item-del-btn" style="width:100%" onclick="deleteTplExercise(${idx},${i})">Remover</button>
+    </div>`).join('');
+  };
+  window._tplRefresh();
+
+  window.deleteTplExercise=(tIdx,exIdx)=>{
+    S.templates[tIdx].exercises.splice(exIdx,1);
+    save(); window._tplRefresh();
+  };
+
+  window.saveTplEdit=(tIdx)=>{
+    const newName=document.getElementById('tpl-edit-name').value.trim();
+    if(!newName){toast('Digite um nome','#ff3b30');return;}
+    S.templates[tIdx].name=newName;
+    save(); renderTemplates();
+    closeModal(modal);
+    toast('Template atualizado!','#007aff');
+  };
+
+  window.addExerciseToTemplate=(tIdx)=>{
     let addModal=document.getElementById('addExTplModal');
     if(addModal) addModal.remove();
     addModal=document.createElement('div');
     addModal.id='addExTplModal';
     addModal.className='modal-mask';
-    addModal.innerHTML=`<div class="modal-container"><div class="modal-header">➕ Adicionar exercício</div><div class="field"><label>Exercício</label><select id="tpl-ex-select"><option value="">Selecionar...</option><optgroup label="Push 💪"><option>Flexão (Push-up)</option><option>Flexão diamante</option><option>Pike push-up</option><option>Handstand push-up</option><option>Paralela (Dip)</option><option>Ring push-up</option><option>Archer push-up</option></optgroup><optgroup label="Pull 🦾"><option>Barra fixa (Pull-up)</option><option>Barra supinada (Chin-up)</option><option>Muscle-up</option><option>Australian pull-up</option><option>L-sit pull-up</option><option>Archer pull-up</option><option>Typewriter pull-up</option></optgroup><optgroup label="Legs 🦵"><option>Agachamento (Squat)</option><option>Pistol squat</option><option>Afundo (Lunge)</option><option>Nordic curl</option><option>Elevação de quadril</option><option>Bulgarian split squat</option></optgroup><optgroup label="Core 🧘"><option>Prancha (Plank)</option><option>L-sit</option><option>Hanging leg raise</option><option>Dragon flag</option><option>Ab wheel rollout</option><option>Hollow body hold</option><option>Toes to bar</option></optgroup><option value="_custom">+ Exercício personalizado</option></select></div><div id="tpl-exercise-tip" class="exercise-tip" style="display:none;"></div><div class="field" id="tpl-custom-field" style="display:none"><label>Nome personalizado</label><input type="text" id="tpl-custom-input" placeholder="Ex: Ring fly..."></div><div class="field"><label>Tipo de contagem</label><div class="seg-sm"><button class="seg-sm-btn active" onclick="setTplCountType('reps',this)">Repetições</button><button class="seg-sm-btn" onclick="setTplCountType('time',this)">Tempo (s)</button></div></div><div class="field"><label>Séries × Repetições</label><div class="sets-row"><input type="number" id="tpl-sets-input" min="1" value="3"><span class="x-sep">×</span><input type="number" id="tpl-reps-input" min="1" value="10"><span style="font-size:12px;color:var(--t3)">reps</span></div></div><div class="modal-actions"><button class="btn-primary" onclick="confirmTplExerciseAdd(${idx}); addModal.remove(); refresh()">Adicionar</button><button class="btn-sm" onclick="document.getElementById('addExTplModal').remove()">Cancelar</button></div></div>`;
+    addModal.innerHTML=`<div class="modal-container"><div class="modal-header">➕ Adicionar exercício</div><div class="field"><label>Exercício</label><select id="tpl-ex-select"><option value="">Selecionar...</option><optgroup label="Push 💪"><option>Flexão (Push-up)</option><option>Flexão diamante</option><option>Pike push-up</option><option>Handstand push-up</option><option>Paralela (Dip)</option><option>Ring push-up</option><option>Archer push-up</option></optgroup><optgroup label="Pull 🦾"><option>Barra fixa (Pull-up)</option><option>Barra supinada (Chin-up)</option><option>Muscle-up</option><option>Australian pull-up</option><option>L-sit pull-up</option><option>Archer pull-up</option><option>Typewriter pull-up</option></optgroup><optgroup label="Legs 🦵"><option>Agachamento (Squat)</option><option>Pistol squat</option><option>Afundo (Lunge)</option><option>Nordic curl</option><option>Elevação de quadril</option><option>Bulgarian split squat</option></optgroup><optgroup label="Core 🧘"><option>Prancha (Plank)</option><option>L-sit</option><option>Hanging leg raise</option><option>Dragon flag</option><option>Ab wheel rollout</option><option>Hollow body hold</option><option>Toes to bar</option></optgroup><option value="_custom">+ Exercício personalizado</option></select></div><div id="tpl-exercise-tip" class="exercise-tip" style="display:none;"></div><div class="field" id="tpl-custom-field" style="display:none"><label>Nome personalizado</label><input type="text" id="tpl-custom-input" placeholder="Ex: Ring fly..."></div><div class="field"><label>Tipo de contagem</label><div class="seg-sm"><button class="seg-sm-btn active" onclick="setTplCountType('reps',this)">Repetições</button><button class="seg-sm-btn" onclick="setTplCountType('time',this)">Tempo (s)</button></div></div><div class="field"><label>Séries × Repetições</label><div class="sets-row"><input type="number" id="tpl-sets-input" min="1" value="3"><span class="x-sep">×</span><input type="number" id="tpl-reps-input" min="1" value="10"></div></div><div class="modal-actions"><button class="btn-sm" onclick="closeModal(this)">Cancelar</button><button class="btn-primary" style="width:auto;padding:10px 20px" onclick="confirmTplExerciseAdd(${tIdx})">Adicionar</button></div></div>`;
     document.body.appendChild(addModal);
-    
+
     let tplCountType='reps';
     window.setTplCountType=(type,btn)=>{
       tplCountType=type;
       document.querySelectorAll('#addExTplModal .seg-sm .seg-sm-btn').forEach(b=>b.classList.remove('active'));
       btn.classList.add('active');
     };
-    
-    document.getElementById('tpl-ex-select').addEventListener('change', function(){
-      const selected=this.value;
+    document.getElementById('tpl-ex-select').addEventListener('change',function(){
+      const sel=this.value;
       const tipEl=document.getElementById('tpl-exercise-tip');
-      if(selected && selected!=='_custom' && EXERCISE_TIPS[selected]){
-        tipEl.textContent='💡 '+EXERCISE_TIPS[selected];
-        tipEl.style.display='block';
-      } else {
-        tipEl.style.display='none';
-      }
-      document.getElementById('tpl-custom-field').style.display=selected==='_custom'?'block':'none';
+      if(sel&&sel!=='_custom'&&EXERCISE_TIPS[sel]){tipEl.textContent='💡 '+EXERCISE_TIPS[sel];tipEl.style.display='block';}
+      else tipEl.style.display='none';
+      document.getElementById('tpl-custom-field').style.display=sel==='_custom'?'block':'none';
     });
-    
-    window.confirmTplExerciseAdd=(idx)=>{
+    window.confirmTplExerciseAdd=(tIdx)=>{
       const sel=document.getElementById('tpl-ex-select').value;
       const ex=sel==='_custom'?document.getElementById('tpl-custom-input').value.trim():sel;
       const sets=parseInt(document.getElementById('tpl-sets-input').value)||1;
       const reps=parseInt(document.getElementById('tpl-reps-input').value)||1;
       if(!ex){toast('Selecione um exercício','#ff3b30');return;}
-      const tpl=S.templates[idx];
-      tpl.exercises.push({ex,sets,reps,isTime:tplCountType==='time',notes:'',muscle:MUSCLE_MAP[ex]||'core'});
-      save();
+      S.templates[tIdx].exercises.push({ex,sets,reps,isTime:tplCountType==='time',notes:'',muscle:MUSCLE_MAP[ex]||'core'});
+      save(); window._tplRefresh();
+      const m=document.getElementById('addExTplModal'); if(m) closeModal(m);
       toast('Exercício adicionado ao template!','#007aff');
     };
-  };
-  
-  window.deleteTplExercise=(idx,exIdx)=>{
-    S.templates[idx].exercises.splice(exIdx,1);
-    save();
-  };
-  
-  window.saveTplEdit=(idx)=>{
-    const newName=document.getElementById('tpl-edit-name').value.trim();
-    if(!newName){toast('Digite um nome','#ff3b30');return;}
-    S.templates[idx].name=newName;
-    save();
-    renderTemplates();
-    modal.remove();
-    toast('Template atualizado!','#007aff');
   };
 }
 
