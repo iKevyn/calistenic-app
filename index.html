@@ -1783,8 +1783,6 @@ function updateAIBadge() {
 // ================================================================
 // GEMINI API INTEGRATION (GRATUITA)
 // ================================================================
-let geminiApiKey = localStorage.getItem('gemini_api_key') || '';
-
 async function callGemini(prompt) {
   if (!geminiApiKey) return null;
   try {
