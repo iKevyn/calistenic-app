@@ -1709,61 +1709,444 @@ function editTemplate(idx) {
 }
 
 // ================================================================
-// AI ANALYSIS ENGINE
+// AI ANALYSIS ENGINE - ROBUSTO
 // ================================================================
 function calculateDetailedStats() {
-  const stats={totalWorkouts:S.workouts.length,workoutsThisWeek:0,avgVolumePerWorkout:0,mostTrainedMuscle:null,leastTrainedMuscle:null,musclePercent:0,currentStreak:getStreak(),bestProgress:null,predictedPR:null};
-  if(!stats.totalWorkouts) return stats;
-  const now=new Date(); const ws=new Date(now); ws.setDate(now.getDate()-now.getDay());
-  stats.workoutsThisWeek=S.workouts.filter(w=>new Date(w.date+'T12:00:00')>=ws).length;
-  const totalVolume=S.workouts.reduce((s,w)=>s+w.exercises.reduce((a,e)=>a+(e.isTime?0:e.sets*e.reps),0),0);
-  stats.avgVolumePerWorkout=totalVolume/stats.totalWorkouts;
-  const mc={push:0,pull:0,legs:0,core:0};
-  S.workouts.forEach(w=>w.exercises.forEach(e=>{if(e.muscle)mc[e.muscle]=(mc[e.muscle]||0)+1;}));
-  const total=Object.values(mc).reduce((a,b)=>a+b,0);
-  const sorted=Object.entries(mc).sort((a,b)=>b[1]-a[1]);
-  if(sorted.length){stats.mostTrainedMuscle=sorted[0][0];stats.musclePercent=Math.round(sorted[0][1]/total*100);if(sorted.length>1)stats.leastTrainedMuscle=sorted[sorted.length-1][0];}
-  const progress={};
-  S.workouts.forEach(w=>w.exercises.forEach(e=>{if(!e.isTime){if(!progress[e.ex])progress[e.ex]=[];progress[e.ex].push(e.reps);}}));
-  let bestEx=null,bestGain=0;
-  Object.entries(progress).forEach(([ex,reps])=>{if(reps.length>=2){const gain=Math.max(...reps)-Math.min(...reps);if(gain>bestGain){bestGain=gain;bestEx=ex;}}});
-  if(bestEx) stats.bestProgress={exercise:bestEx.split(' ')[0],gain:bestGain};
-  const lastWorkouts=S.workouts.slice(-5); const trends={};
-  lastWorkouts.forEach(w=>w.exercises.forEach(e=>{if(!e.isTime){if(!trends[e.ex])trends[e.ex]=[];trends[e.ex].push(e.reps);}}));
-  Object.entries(trends).forEach(([ex,reps])=>{if(reps.length>=2){const trend=reps[reps.length-1]-reps[0];if(trend>0)stats.predictedPR={exercise:ex.split(' ')[0],value:Math.max(...reps)+Math.ceil(trend/reps.length)};}});
+  const stats={
+    totalWorkouts: S.workouts.length,
+    workoutsThisWeek: 0,
+    workoutsLastWeek: 0,
+    avgVolumePerWorkout: 0,
+    avgVolumeLastMonth: 0,
+    mostTrainedMuscle: null,
+    leastTrainedMuscle: null,
+    musclePercent: 0,
+    muscleDistribution: {},
+    currentStreak: getStreak(),
+    bestStreak: 0,
+    bestProgress: null,
+    worstProgress: null,
+    predictedPRs: [],
+    trendingUp: [],
+    trendingDown: [],
+    stagnant: [],
+    aboveAverageExercises: [],
+    needsFocusMuscles: [],
+    isOvertraining: false,
+    isUndertraining: false,
+    intensityScore: 0,
+    recoveryScore: 100,
+    weeklyGoal: 3,
+    weeklyProgress: 0,
+    consistencyScore: 0,
+    volumeTrend: 0,
+    personalRecords: {}
+  };
+  
+  if (!stats.totalWorkouts) return stats;
+  
+  const now = new Date();
+  const ws = new Date(now); ws.setDate(now.getDate() - now.getDay());
+  const lastWeekStart = new Date(ws); lastWeekStart.setDate(ws.getDate() - 7);
+  
+  stats.workoutsThisWeek = S.workouts.filter(w => new Date(w.date + 'T12:00:00') >= ws).length;
+  stats.workoutsLastWeek = S.workouts.filter(w => {
+    const d = new Date(w.date + 'T12:00:00');
+    return d >= lastWeekStart && d < ws;
+  }).length;
+  
+  const totalVolume = S.workouts.reduce((s, w) => s + w.exercises.reduce((a, e) => a + (e.isTime ? 0 : e.sets * e.reps), 0), 0);
+  stats.avgVolumePerWorkout = totalVolume / stats.totalWorkouts;
+  
+  const thisMonth = now.toISOString().slice(0, 7);
+  const lastMonthDate = new Date(now); lastMonthDate.setMonth(lastMonthDate.getMonth() - 1);
+  const lastMonth = lastMonthDate.toISOString().slice(0, 7);
+  
+  const thisMonthVol = S.workouts.filter(w => w.date.startsWith(thisMonth))
+    .reduce((a, w) => a + w.exercises.reduce((b, e) => b + (e.isTime ? 0 : e.sets * e.reps), 0), 0);
+  const lastMonthVol = S.workouts.filter(w => w.date.startsWith(lastMonth))
+    .reduce((a, w) => a + w.exercises.reduce((b, e) => b + (e.isTime ? 0 : e.sets * e.reps), 0), 0);
+  stats.avgVolumeLastMonth = thisMonthVol / Math.max(1, S.workouts.filter(w => w.date.startsWith(thisMonth)).length);
+  
+  const mc = {push: 0, pull: 0, legs: 0, core: 0};
+  S.workouts.forEach(w => w.exercises.forEach(e => {
+    if (e.muscle) {
+      mc[e.muscle] = (mc[e.muscle] || 0) + (e.isTime ? 0 : e.sets * e.reps);
+    }
+  }));
+  
+  const totalMuscleVol = Object.values(mc).reduce((a, b) => a + b, 0);
+  stats.muscleDistribution = mc;
+  const sorted = Object.entries(mc).sort((a, b) => b[1] - a[1]);
+  if (sorted.length) {
+    stats.mostTrainedMuscle = sorted[0][0];
+    stats.musclePercent = Math.round(sorted[0][1] / totalMuscleVol * 100);
+    if (sorted.length > 1) stats.leastTrainedMuscle = sorted[sorted.length - 1][0];
+  }
+  
+  // Calcular melhor e pior progresso por exercício
+  const exerciseHistory = {};
+  S.workouts.forEach(w => w.exercises.forEach(e => {
+    if (!e.isTime) {
+      if (!exerciseHistory[e.ex]) exerciseHistory[e.ex] = [];
+      exerciseHistory[e.ex].push({reps: e.reps, date: w.date});
+    }
+  }));
+  
+  let bestEx = null, bestGain = 0, worstEx = null, worstLoss = 0;
+  Object.entries(exerciseHistory).forEach(([ex, history]) => {
+    if (history.length >= 2) {
+      history.sort((a, b) => new Date(a.date) - new Date(b.date));
+      const first = history[0].reps;
+      const last = history[history.length - 1].reps;
+      const avg = history.reduce((s, h) => s + h.reps, 0) / history.length;
+      const gain = last - first;
+      const recentAvg = history.slice(-3).reduce((s, h) => s + h.reps, 0) / Math.min(3, history.length);
+      
+      if (gain > bestGain) { bestGain = gain; bestEx = ex; }
+      if (gain < worstLoss) { worstLoss = gain; worstEx = ex; }
+      
+      // Detectar tendências
+      const trend = recentAvg - avg;
+      if (history.length >= 3) {
+        if (trend > 1) stats.trendingUp.push({exercise: ex, trend: Math.round(trend * 10) / 10});
+        else if (trend < -1) stats.trendingDown.push({exercise: ex, trend: Math.round(trend * 10) / 10});
+        else stats.stagnant.push(exercise: ex);
+      }
+      
+      // Verificar se está acima da média
+      if (recentAvg > avg * 1.1) {
+        stats.aboveAverageExercises.push({exercise: ex, aboveBy: Math.round((recentAvg / avg - 1) * 100)});
+      }
+      
+      // Predizer PR
+      if (history.length >= 2 && trend > 0) {
+        stats.predictedPRs.push({
+          exercise: ex,
+          current: last,
+          predicted: Math.round(last + trend * 1.5),
+          confidence: Math.min(90, 50 + history.length * 5)
+        });
+      }
+    }
+  });
+  
+  if (bestEx) stats.bestProgress = {exercise: bestEx, gain: bestGain, recentTrend: stats.trendingUp.find(t => t.exercise === bestEx)?.trend || 0};
+  if (worstEx) stats.worstProgress = {exercise: worstEx, loss: worstLoss};
+  
+  // Detectar músculos que precisam de foco (menos de 15% do volume total)
+  const idealPercent = 25;
+  Object.entries(mc).forEach(([muscle, vol]) => {
+    const percent = (vol / totalMuscleVol * 100);
+    if (percent < idealPercent * 0.6) {
+      stats.needsFocusMuscles.push({muscle, percent: Math.round(percent), gap: Math.round(idealPercent - percent)});
+    }
+  });
+  
+  // Calcular consistência (dias entre treinos)
+  const workoutDates = S.workouts.map(w => w.date).sort();
+  let gaps = [];
+  for (let i = 1; i < workoutDates.length; i++) {
+    const d1 = new Date(workoutDates[i-1]);
+    const d2 = new Date(workoutDates[i]);
+    gaps.push(Math.round((d2 - d1) / (1000 * 60 * 60 * 24)));
+  }
+  const avgGap = gaps.length ? gaps.reduce((a, b) => a + b, 0) / gaps.length : 7;
+  stats.consistencyScore = Math.max(0, Math.min(100, Math.round(100 - (avgGap - 2) * 15)));
+  
+  // Verificar overtraining (muitos treinos seguido sem descanso)
+  const recent7 = S.workouts.filter(w => {
+    const d = new Date(w.date + 'T12:00:00');
+    const diff = (now - d) / (1000 * 60 * 60 * 24);
+    return diff <= 7 && diff >= 0;
+  }).length;
+  stats.isOvertraining = recent7 >= 6;
+  stats.isUndertraining = recent7 <= 1;
+  
+  // Score de intensidade
+  stats.intensityScore = Math.min(100, Math.round((thisMonthVol / Math.max(1, stats.totalWorkouts)) * 10));
+  
+  // Progresso semanal
+  stats.weeklyProgress = Math.round((stats.workoutsThisWeek / stats.weeklyGoal) * 100);
+  
+  // Volume trend
+  if (lastMonthVol > 0) {
+    stats.volumeTrend = Math.round(((thisMonthVol - lastMonthVol) / lastMonthVol) * 100);
+  }
+  
+  // Calcular PRs por exercício
+  Object.keys(exerciseHistory).forEach(ex => {
+    const max = Math.max(...exerciseHistory[ex].map(h => h.reps));
+    stats.personalRecords[ex] = max;
+  });
+  
   return stats;
 }
 
 function generateAIAnalysis() {
   const stats = calculateDetailedStats();
+  
   if (!stats.totalWorkouts) {
     return {
-      message:"👋 Bem-vindo! Ainda sem dados para análise. Comece registrando seu primeiro treino!",
-      suggestions:[{icon:"🎯",text:"Comece com exercícios básicos como flexões e agachamentos",badge:"Iniciante"},{icon:"📅",text:"Tente treinar 3x por semana para criar consistência",badge:"Meta"}]
+      message: "👋 Bem-vindo ao Ren! Comece registrando seu primeiro treino para receber análises personalizadas.",
+      suggestions: [
+        {icon: "🎯", text: "Comece com Push (flexões) para construir base", badge: "Sugestão"},
+        {icon: "📅", text: "Treine 3x por semana para criar consistência", badge: "Meta"},
+        {icon: "💪", text: "Use os templates para seguir uma estrutura", badge: "Dica"}
+      ],
+      analysis: {
+        streak: 0,
+        weeklyProgress: 0,
+        muscleBalance: "unknown",
+        motivation: "high"
+      }
     };
   }
-  let mainMessage="";
-  const suggestions=[];
-  if(stats.workoutsThisWeek>=3) mainMessage+="🎉 Ótima consistência! "+stats.workoutsThisWeek+"x esta semana. ";
-  else if(stats.workoutsThisWeek>0) mainMessage+="📈 "+stats.workoutsThisWeek+"x treinos esta semana. ";
-  else mainMessage+="📅 Você ainda não treinou esta semana. Que tal hoje? ";
-  if(stats.bestProgress&&stats.bestProgress.gain>0){mainMessage+=`Seu ${stats.bestProgress.exercise} melhorou em ${stats.bestProgress.gain} reps. `;suggestions.push({icon:"📈",text:`Continue no ${stats.bestProgress.exercise}`,badge:`+${stats.bestProgress.gain} reps`});}
-  const avg=Math.round(stats.avgVolumePerWorkout);
-  if(avg>100) mainMessage+=`Volume médio de ${avg} reps é excelente! `;
-  else if(avg>0) mainMessage+=`Volume médio: ${avg} reps/treino. `;
-  if(stats.mostTrainedMuscle){const mn={push:'Peito/Tríceps',pull:'Costas/Bíceps',legs:'Pernas',core:'Core'};suggestions.push({icon:"💪",text:`Foco em ${mn[stats.mostTrainedMuscle]}`,badge:`${stats.musclePercent}%`});}
-  if(stats.leastTrainedMuscle&&stats.leastTrainedMuscle!==stats.mostTrainedMuscle){const mn={push:'Push',pull:'Pull',legs:'Legs',core:'Core'};suggestions.push({icon:"⚖️",text:`Mais exercícios de ${mn[stats.leastTrainedMuscle]}`,badge:"Equilíbrio"});}
-  if(stats.currentStreak>0){const next=Math.ceil(stats.currentStreak/7)*7;suggestions.push({icon:"🔥",text:`Streak: ${stats.currentStreak} dias`,badge:`Meta: ${next}`});}
-  if(stats.predictedPR) suggestions.push({icon:"🎯",text:`PR previsto: ${stats.predictedPR.exercise}`,badge:`${stats.predictedPR.value} reps`});
-  if(suggestions.length<2){suggestions.push({icon:"💡",text:"Varie exercícios para estimular músculos diferentes",badge:"Dica"});suggestions.push({icon:"🧘",text:"Descanso e alongamento são parte do treino",badge:"Recuperação"});}
-  return {message:mainMessage||"Continue assim! Cada treino te deixa mais forte. 💪", suggestions};
+  
+  const suggestions = [];
+  let mainMessage = "";
+  const mn = {push: "Push (Peito/Ombro/Tríceps)", pull: "Pull (Costas/Bíceps)", legs: "Legs (Pernas)", core: "Core (Abdômen)"};
+  const mnShort = {push: "Push", pull: "Pull", legs: "Legs", core: "Core"};
+  
+  // ============ ANÁLISE DE CONSISTÊNCIA ============
+  if (stats.workoutsThisWeek >= 4) {
+    mainMessage += "🔥 Incrível! Você treinou " + stats.workoutsThisWeek + "x esta semana. ";
+    suggestions.push({icon: "🔥", text: "Você está em ritmo forte! Considere um dia de descanso se sentir fadiga.", badge: "Alta"});
+  } else if (stats.workoutsThisWeek >= stats.weeklyGoal) {
+    mainMessage += "✅Meta semanal atingida! " + stats.workoutsThisWeek + "/" + stats.weeklyGoal + " treinos. ";
+    suggestions.push({icon: "✅", text: "Meta atingida! Que tal um desafio extra na próxima semana?", badge: "Concluído"});
+  } else if (stats.workoutsThisWeek > 0) {
+    const remaining = stats.weeklyGoal - stats.workoutsThisWeek;
+    mainMessage += "📈 " + stats.workoutsThisWeek + "x esta semana. Faltam " + remaining + " para atingir a meta! ";
+    suggestions.push({icon: "🎯", text: "Complete " + remaining + " treino(s) essa semana para atingir sua meta.", badge: "Meta"});
+  } else {
+    mainMessage += "⚠️ Esta semana você ainda não treinou. Que tal começar hoje? ";
+    suggestions.push({icon: "💪", text: "Hoje é um bom dia para treinar! Comece com seu grupo favorito.", badge: "Urgente"});
+  }
+  
+  // ============ ANÁLISE DE STREAK ============
+  if (stats.currentStreak >= 7) {
+    mainMessage += "🏆 Streak de " + stats.currentStreak + " dias! Você está em chamas! ";
+    suggestions.push({icon: "🔥", text: "Streak impressionante de " + stats.currentStreak + " dias! Mantenha esse ritmo!", badge: "🔥 " + stats.currentStreak + " dias"});
+  } else if (stats.currentStreak > 0) {
+    const next = Math.ceil(stats.currentStreak / 7) * 7;
+    const remaining = next - stats.currentStreak;
+    mainMessage += "🔥 Streak de " + stats.currentStreak + " dias. ";
+    suggestions.push({icon: "🎯", text: "Faltam " + remaining + " dias para um novo marco de " + next + " dias!", badge: "Próximo: " + next});
+  }
+  
+  // ============ ANÁLISE DE PROGRESSO ============
+  if (stats.bestProgress && stats.bestProgress.gain > 0) {
+    const trendText = stats.bestProgress.recentTrend > 0 ? " (+" + stats.bestProgress.recentTrend + "recent)" : "";
+    mainMessage += "📈 " + stats.bestProgress.exercise + " melhorou " + stats.bestProgress.gain + " reps no total" + trendText + ". ";
+    suggestions.push({icon: "📈", text: "Continue focando em " + stats.bestProgress.exercise + " - você está evoluindo bem!", badge: "+" + stats.bestProgress.gain + " reps"});
+  }
+  
+  if (stats.worstProgress && stats.worstProgress.loss < -2) {
+    suggestions.push({icon: "⚠️", text: stats.worstProgress.exercise + " caiu " + Math.abs(stats.worstProgress.loss) + " reps. Considere reduzir peso ou variar o exercício.", badge: "Atenção"});
+  }
+  
+  // ============ ELOGIOS QUANDO ACIMA DA MÉDIA ============
+  if (stats.aboveAverageExercises.length > 0) {
+    const above = stats.aboveAverageExercises[0];
+    suggestions.push({icon: "⭐", text: above.exercise + " está " + above.aboveBy + "% acima da sua média! Você está forte nesse exercício!", badge: "Acima da média"});
+  }
+  
+  // ============ PREDIÇÃO DE PR ============
+  if (stats.predictedPRs.length > 0) {
+    const pr = stats.predictedPRs[0];
+    suggestions.push({icon: "🎯", text: "PR previsto para " + pr.exercise + ": " + pr.predicted + " reps (atual: " + pr.current + ")", badge: pr.confidence + "% confiança"});
+  }
+  
+  // ============ ANÁLISE DE TENDÊNCIA ============
+  if (stats.trendingUp.length > 0) {
+    const top = stats.trendingUp[0];
+    suggestions.push({icon: "🚀", text: top.exercise + " está subindo! +" + top.trend + " reps de média recente.", badge: "Em alta"});
+  }
+  
+  if (stats.trendingDown.length > 0) {
+    const down = stats.trendingDown[0];
+    suggestions.push({icon: "📉", text: down.exercise + " está em queda (" + down.trend + " reps). Ajuste a carga ou descanse mais.", badge: "Atenção"});
+  }
+  
+  // ============ EQUILÍBRIO MUSCULAR ============
+  if (stats.mostTrainedMuscle) {
+    suggestions.push({icon: "💪", text: "Foco atual: " + mn[stats.mostTrainedMuscle] + " (" + stats.musclePercent + "% do volume)", badge: stats.musclePercent + "%"});
+  }
+  
+  if (stats.needsFocusMuscles.length > 0) {
+    const needs = stats.needsFocusMuscles[0];
+    suggestions.push({icon: "⚖️", text: mnShort[needs.muscle] + " está com apenas " + needs.percent + "% - faltam " + needs.gap + "% para equilibrar. Que tal um dia de " + needs.muscle + "?", badge: "Equilíbrio"});
+  }
+  
+  // ============ VOLUME E INTENSIDADE ============
+  const avg = Math.round(stats.avgVolumePerWorkout);
+  if (avg > 100) {
+    mainMessage += "Volume médio de " + avg + " reps por treino - muito acima da média! ";
+    suggestions.push({icon: "💪", text: "Seu volume está excellent! Continue assim para hypertrophy.", badge: "Alto volume"});
+  } else if (avg > 50) {
+    mainMessage += "Volume médio: " + avg + " reps/treino. ";
+    suggestions.push({icon: "📊", text: "Bons volumes de treino. Pode aumentar gradualmente se sentir capacidade.", badge: "Moderado"});
+  }
+  
+  // ============ OVER/UNDER TRAINING ============
+  if (stats.isOvertraining) {
+    suggestions.push({icon: "🛑", text: "Você treinou bastante essa semana. Considere um dia de recuperação hoje.", badge: "Descanso"});
+  }
+  
+  if (stats.isUndertraining && stats.totalWorkouts > 5) {
+    suggestions.push({icon: "⚠️", text: "Você está abaixo do habitual essa semana. Que tal treinar hoje?", badge: "Retomar"});
+  }
+  
+  // ============ CONSISTÊNCIA ============
+  if (stats.consistencyScore >= 80) {
+    suggestions.push({icon: "⭐", text: "Sua consistência é excelente! Continue mantendo.", badge: stats.consistencyScore + "%"});
+  } else if (stats.consistencyScore < 50 && stats.totalWorkouts > 3) {
+    suggestions.push({icon: "📅", text: "Tente espaçar melhor seus treinos para manter consistência.", badge: "Dica"});
+  }
+  
+  // ============ COMPARAÇÃO MENSAL ============
+  if (stats.volumeTrend !== 0) {
+    if (stats.volumeTrend > 10) {
+      suggestions.push({icon: "📈", text: "Seu volume aumentou " + stats.volumeTrend + "% vs mês passado! Crescimento sólido.", badge: "+" + stats.volumeTrend + "%"});
+    } else if (stats.volumeTrend < -10) {
+      suggestions.push({icon: "📉", text: "Volume caiu " + Math.abs(stats.volumeTrend) + "% vs mês passado. Tente recuperar o ritmo.", badge: "-" + Math.abs(stats.volumeTrend) + "%"});
+    }
+  }
+  
+  // ============ DICAS VARIADAS ============
+  if (suggestions.length < 3) {
+    const tips = [
+      {icon: "🧘", text: "Alongamento e mobilidade melhoram seu desempenho", badge: "Dica"},
+      {icon: "🥗", text: "Nutrição adequada potencializa seus resultados", badge: "Dica"},
+      {icon: "😴", text: "Descanso é essencial - durma 7-8 horas", badge: "Recuperação"},
+      {icon: "💧", text: "Hidrate-se bem antes e depois do treino", badge: "Dica"},
+      {icon: "🔄", text: "Varie exercícios para estimular crescimento", badge: "Progresso"}
+    ];
+    suggestions.push(...tips.slice(0, 3 - suggestions.length));
+  }
+  
+  // ============ RECOMENDAÇÃO DE GRUPO ============
+  const nextGroup = guessNextGroup();
+  suggestions.push({icon: "➡️", text: "Próximo grupo recomendado: " + mnShort[nextGroup], badge: "Sugestão"});
+  
+  const analysisData = {
+    streak: stats.currentStreak,
+    weeklyProgress: stats.weeklyProgress,
+    muscleBalance: stats.mostTrainedMuscle ? 
+      (stats.musclePercent >= 35 ? "desequilibrado" : stats.musclePercent >= 20 ? "razoável" : "bom") : "unknown",
+    motivation: stats.workoutsThisWeek >= 3 ? "alta" : stats.workoutsThisWeek > 0 ? "média" : "baixa",
+    isOvertraining: stats.isOvertraining,
+    isUndertraining: stats.isUndertraining,
+    volumeTrend: stats.volumeTrend,
+    consistencyScore: stats.consistencyScore
+  };
+  
+  return {
+    message: mainMessage || "Continue assim! Cada treino te deixa mais forte. 💪",
+    suggestions: suggestions.slice(0, 6),
+    analysis: analysisData,
+    detailed: stats
+  };
 }
 
 function renderAIInsights() {
   const analysis = generateAIAnalysis();
   const preview = document.getElementById('ai-preview');
-  if (preview) preview.textContent = analysis.message;
+  if (preview) {
+    // Mostrar insights mais ricos no preview
+    let previewText = analysis.message;
+    
+    // Adicionar indicadores visuais no preview
+    if (analysis.analysis.streak > 0) {
+      previewText += " 🔥" + analysis.analysis.streak;
+    }
+    if (analysis.analysis.muscleBalance === "bom") {
+      previewText += " ⚖️";
+    }
+    
+    preview.textContent = previewText;
+  }
   updateAIBadge();
+}
+
+// Adicionar função para calcular recomendação de peso
+function getWeightRecommendation(exercise) {
+  const allReps = S.workouts.flatMap(w => w.exercises)
+    .filter(e => e.ex === exercise && !e.isTime)
+    .map(e => e.reps);
+  
+  if (allReps.length < 3) return null;
+  
+  const avg = allReps.reduce((a, b) => a + b, 0) / allReps.length;
+  const max = Math.max(...allReps);
+  const recent = allReps.slice(-3);
+  const recentAvg = recent.reduce((a, b) => a + b, 0) / recent.length;
+  
+  // Se últimos 3平均 > média + 2, sugerimos aumentar
+  if (recentAvg > avg + 2) {
+    return {
+      action: "aumentar",
+      reason: "Sua média recente está acima da média geral",
+      suggested: Math.round(recentAvg + 1),
+      current: Math.round(avg)
+    };
+  }
+  
+  // Se últimos 3平均 < média - 2, sugerimos manter ou reduzir
+  if (recentAvg < avg - 2) {
+    return {
+      action: "manter",
+      reason: "Recentes abaixo da média - foque em consistência",
+      suggested: Math.round(avg),
+      current: Math.round(recentAvg)
+    };
+  }
+  
+  // Se estável há um tempo, manter
+  return {
+    action: "manter",
+    reason: "Você está consistente - mantenha o foco",
+    suggested: Math.round(recentAvg),
+    current: Math.round(recentAvg)
+  };
+}
+
+// Adicionar análise de foco muscular
+function getMuscleFocusRecommendation() {
+  const stats = calculateDetailedStats();
+  const mc = stats.muscleDistribution;
+  const total = Object.values(mc).reduce((a, b) => a + b, 0);
+  if (total === 0) return null;
+  
+  const recommendations = [];
+  const idealPercent = 25;
+  
+  Object.entries(mc).forEach(([muscle, vol]) => {
+    const percent = (vol / total * 100);
+    if (percent < idealPercent * 0.6) {
+      recommendations.push({
+        muscle,
+        percent: Math.round(percent),
+        gap: Math.round(idealPercent - percent),
+        priority: percent < 10 ? "alta" : percent < 15 ? "média" : "baixa"
+      });
+    } else if (percent > idealPercent * 1.4) {
+      recommendations.push({
+        muscle,
+        percent: Math.round(percent),
+        gap: Math.round(percent - idealPercent),
+        priority: "manter",
+        type: "manter"
+      });
+    }
+  });
+  
+  return recommendations.sort((a, b) => {
+    if (a.priority === "alta" && b.priority !== "alta") return -1;
+    if (b.priority === "alta" && a.priority !== "alta") return 1;
+    return b.gap - a.gap;
+  });
 }
 
 function updateAIBadge() {
