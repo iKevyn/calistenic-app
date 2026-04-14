@@ -1160,17 +1160,45 @@ function finishWorkout() {
 // ================================================================
 function openAIModal() {
   const analysis = generateAIAnalysis();
-  let sugHtml = analysis.suggestions.map(s=>`
+  
+  let insightsHtml = '';
+  if (analysis.insights && analysis.insights.length > 0) {
+    const insightColors = {
+      elite: '#34c759',
+      good: '#34c759',
+      warning: '#ff9500',
+      streak: '#007aff',
+      progress: '#34c759',
+      imbalance: '#ff9500',
+      plateau: '#ff3b30'
+    };
+    insightsHtml = `
+      <div style="margin-top:16px;margin-bottom:12px">
+        <div style="font-size:11px;font-weight:600;color:var(--t3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">📊 Insights Detectados</div>
+        ${analysis.insights.map(ins => `
+          <div style="display:flex;align-items:center;gap:8px;padding:8px 10px;background:var(--card2);border-radius:8px;margin-bottom:6px;border-left:3px solid ${insightColors[ins.type] || 'var(--t3)'}">
+            <span style="font-size:13px;color:var(--t2)">${ins.text}</span>
+          </div>
+        `).join('')}
+      </div>
+    `;
+  }
+  
+  let sugHtml = analysis.suggestions.map(s => `
     <div class="ai-suggestion-item">
       <span style="font-size:18px">${s.icon}</span>
-      <span>${s.text}</span>
+      <span style="flex:1">${s.text}</span>
       <span class="ai-badge">${s.badge}</span>
     </div>
   `).join('');
   
-  createModal('aiModal', '🧠 Análise Inteligente', `
-    <div class="ai-message">${analysis.message}</div>
-    <div class="ai-suggestions">${sugHtml}</div>
+  createModal('aiModal', '🧠 Coach Inteligente', `
+    <div class="ai-message" style="font-size:15px;line-height:1.6">${analysis.message}</div>
+    ${insightsHtml}
+    <div style="margin-top:16px">
+      <div style="font-size:11px;font-weight:600;color:var(--t3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">🎯 Recomendações</div>
+      <div class="ai-suggestions">${sugHtml}</div>
+    </div>
   `);
 }
 
@@ -1795,25 +1823,189 @@ function editTemplate(idx) {
 // AI ANALYSIS ENGINE
 // ================================================================
 function calculateDetailedStats() {
-  const stats={totalWorkouts:S.workouts.length,workoutsThisWeek:0,avgVolumePerWorkout:0,mostTrainedMuscle:null,leastTrainedMuscle:null,musclePercent:0,currentStreak:getStreak(),bestProgress:null,predictedPR:null};
-  if(!stats.totalWorkouts) return stats;
-  const now=new Date(); const ws=new Date(now); ws.setDate(now.getDate()-now.getDay());
-  stats.workoutsThisWeek=S.workouts.filter(w=>new Date(w.date+'T12:00:00')>=ws).length;
-  const totalVolume=S.workouts.reduce((s,w)=>s+w.exercises.reduce((a,e)=>a+(e.isTime?0:e.sets*e.reps),0),0);
-  stats.avgVolumePerWorkout=totalVolume/stats.totalWorkouts;
-  const mc={push:0,pull:0,legs:0,core:0};
-  S.workouts.forEach(w=>w.exercises.forEach(e=>{if(e.muscle)mc[e.muscle]=(mc[e.muscle]||0)+1;}));
-  const total=Object.values(mc).reduce((a,b)=>a+b,0);
-  const sorted=Object.entries(mc).sort((a,b)=>b[1]-a[1]);
-  if(sorted.length){stats.mostTrainedMuscle=sorted[0][0];stats.musclePercent=Math.round(sorted[0][1]/total*100);if(sorted.length>1)stats.leastTrainedMuscle=sorted[sorted.length-1][0];}
-  const progress={};
-  S.workouts.forEach(w=>w.exercises.forEach(e=>{if(!e.isTime){if(!progress[e.ex])progress[e.ex]=[];progress[e.ex].push(e.reps);}}));
-  let bestEx=null,bestGain=0;
-  Object.entries(progress).forEach(([ex,reps])=>{if(reps.length>=2){const gain=Math.max(...reps)-Math.min(...reps);if(gain>bestGain){bestGain=gain;bestEx=ex;}}});
-  if(bestEx) stats.bestProgress={exercise:bestEx.split(' ')[0],gain:bestGain};
-  const lastWorkouts=S.workouts.slice(-5); const trends={};
-  lastWorkouts.forEach(w=>w.exercises.forEach(e=>{if(!e.isTime){if(!trends[e.ex])trends[e.ex]=[];trends[e.ex].push(e.reps);}}));
-  Object.entries(trends).forEach(([ex,reps])=>{if(reps.length>=2){const trend=reps[reps.length-1]-reps[0];if(trend>0)stats.predictedPR={exercise:ex.split(' ')[0],value:Math.max(...reps)+Math.ceil(trend/reps.length)};}});
+  const stats = {
+    totalWorkouts: S.workouts.length,
+    workoutsThisWeek: 0,
+    avgVolumePerWorkout: 0,
+    mostTrainedMuscle: null,
+    leastTrainedMuscle: null,
+    musclePercent: 0,
+    currentStreak: getStreak(),
+    bestProgress: null,
+    predictedPR: null,
+    worstExercise: null,
+    restDaysRatio: 0,
+    peakDay: null,
+    trainingConsistency: 0,
+    daysSinceLastWorkout: 0,
+    weeklyProgress: 0,
+    hasPlateau: false,
+    plateauWeeks: 0,
+    totalPRs: 0,
+    totalVolumeAllTime: 0,
+    muscleBalance: 'unknown',
+    nextMilestone: null
+  };
+  
+  if (!stats.totalWorkouts) return stats;
+  
+  const now = new Date();
+  const ws = new Date(now);
+  ws.setDate(now.getDate() - now.getDay());
+  stats.workoutsThisWeek = S.workouts.filter(w => new Date(w.date + 'T12:00:00') >= ws).length;
+  
+  const totalVolume = S.workouts.reduce((s, w) => s + w.exercises.reduce((a, e) => a + (e.isTime ? 0 : e.sets * e.reps), 0), 0);
+  stats.totalVolumeAllTime = totalVolume;
+  stats.avgVolumePerWorkout = totalVolume / stats.totalWorkouts;
+  
+  const mc = {push: 0, pull: 0, legs: 0, core: 0};
+  S.workouts.forEach(w => w.exercises.forEach(e => {
+    if (e.muscle) mc[e.muscle] = (mc[e.muscle] || 0) + (e.isTime ? 0 : e.sets * e.reps);
+  }));
+  const total = Object.values(mc).reduce((a, b) => a + b, 0);
+  const sorted = Object.entries(mc).sort((a, b) => b[1] - a[1]);
+  if (sorted.length) {
+    stats.mostTrainedMuscle = sorted[0][0];
+    stats.musclePercent = Math.round(sorted[0][1] / total * 100);
+    if (sorted.length > 1) stats.leastTrainedMuscle = sorted[sorted.length - 1][0];
+  }
+  
+  const maxVals = {};
+  S.workouts.forEach(w => w.exercises.forEach(e => {
+    if (!e.isTime) {
+      if (!maxVals[e.ex] || e.reps > maxVals[e.ex]) maxVals[e.ex] = e.reps;
+    }
+  }));
+  stats.totalPRs = Object.keys(maxVals).length;
+  
+  const progress = {};
+  S.workouts.forEach(w => w.exercises.forEach(e => {
+    if (!e.isTime) {
+      if (!progress[e.ex]) progress[e.ex] = [];
+      progress[e.ex].push({reps: e.reps, date: w.date});
+    }
+  }));
+  
+  let bestEx = null, bestGain = 0;
+  let worstEx = null, worstDecline = 0;
+  Object.entries(progress).forEach(([ex, entries]) => {
+    if (entries.length >= 2) {
+      const sortedByDate = entries.sort((a, b) => new Date(a.date) - new Date(b.date));
+      const first = sortedByDate[0].reps;
+      const last = sortedByDate[sortedByDate.length - 1].reps;
+      const gain = last - first;
+      if (gain > bestGain) { bestGain = gain; bestEx = ex; }
+      if (gain < worstDecline) { worstDecline = gain; worstEx = ex; }
+    }
+  });
+  if (bestEx) stats.bestProgress = {exercise: bestEx.split(' ')[0], gain: bestGain};
+  if (worstEx && worstDecline < -2) stats.worstExercise = {exercise: worstEx.split(' ')[0], decline: Math.abs(worstDecline)};
+  
+  const lastWorkouts = S.workouts.slice(-5);
+  const trends = {};
+  lastWorkouts.forEach(w => w.exercises.forEach(e => {
+    if (!e.isTime) {
+      if (!trends[e.ex]) trends[e.ex] = [];
+      trends[e.ex].push(e.reps);
+    }
+  }));
+  Object.entries(trends).forEach(([ex, reps]) => {
+    if (reps.length >= 2) {
+      const trend = reps[reps.length - 1] - reps[0];
+      if (trend > 0) stats.predictedPR = {exercise: ex.split(' ')[0], value: Math.max(...reps) + Math.ceil(trend / reps.length)};
+    }
+  });
+  
+  const totalDays = S.workouts.length + S.restDays.length;
+  stats.restDaysRatio = totalDays > 0 ? S.restDays.length / totalDays : 0;
+  
+  const dayTotals = [0, 0, 0, 0, 0, 0, 0];
+  const dayCounts = [0, 0, 0, 0, 0, 0, 0];
+  S.workouts.forEach(w => {
+    const d = new Date(w.date).getDay();
+    dayCounts[d]++;
+    dayTotals[d] += w.exercises.reduce((a, e) => a + (e.isTime ? 0 : e.sets * e.reps), 0);
+  });
+  const avgPerDay = dayCounts.map((c, i) => c > 0 ? dayTotals[i] / c : 0);
+  const bestDayIdx = avgPerDay.indexOf(Math.max(...avgPerDay));
+  if (dayCounts[bestDayIdx] > 0) stats.peakDay = bestDayIdx;
+  
+  if (S.workouts.length > 0) {
+    const sortedDates = S.workouts.map(w => w.date).sort();
+    const lastDate = new Date(sortedDates[sortedDates.length - 1]);
+    const diffTime = now - lastDate;
+    stats.daysSinceLastWorkout = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+  }
+  
+  const lastWeekStart = new Date(now);
+  lastWeekStart.setDate(now.getDate() - 7);
+  const prevWeekStart = new Date(lastWeekStart);
+  prevWeekStart.setDate(lastWeekStart.getDate() - 7);
+  
+  const lastWeekVol = S.workouts.filter(w => {
+    const d = new Date(w.date);
+    return d >= lastWeekStart && d < now;
+  }).reduce((s, w) => s + w.exercises.reduce((a, e) => a + (e.isTime ? 0 : e.sets * e.reps), 0), 0);
+  
+  const prevWeekVol = S.workouts.filter(w => {
+    const d = new Date(w.date);
+    return d >= prevWeekStart && d < lastWeekStart;
+  }).reduce((s, w) => s + w.exercises.reduce((a, e) => a + (e.isTime ? 0 : e.sets * e.reps), 0), 0);
+  
+  if (prevWeekVol > 0) stats.weeklyProgress = Math.round(((lastWeekVol - prevWeekVol) / prevWeekVol) * 100);
+  
+  const last8Weeks = S.workouts.filter(w => {
+    const d = new Date(w.date);
+    const eightWeeksAgo = new Date(now);
+    eightWeeksAgo.setDate(now.getDate() - 56);
+    return d >= eightWeeksAgo;
+  });
+  const weeks = {};
+  last8Weeks.forEach(w => {
+    const d = new Date(w.date);
+    const weekNum = Math.floor((now - d) / (7 * 24 * 60 * 60 * 1000));
+    weeks[weekNum] = (weeks[weekNum] || 0) + w.exercises.reduce((a, e) => a + (e.isTime ? 0 : e.sets * e.reps), 0);
+  });
+  const weekVals = Object.values(weeks);
+  if (weekVals.length >= 3) {
+    const recent = weekVals.slice(-3);
+    const avg = recent.reduce((a, b) => a + b, 0) / recent.length;
+    const variance = recent.every(v => Math.abs(v - avg) < avg * 0.1);
+    if (variance && recent.length >= 3) {
+      stats.hasPlateau = true;
+      stats.plateauWeeks = recent.length;
+    }
+  }
+  
+  const firstDate = S.workouts.length > 0 ? new Date(S.workouts[0].date) : null;
+  if (firstDate) {
+    const daysSinceStart = Math.floor((now - firstDate) / (1000 * 60 * 60 * 24));
+    const weeksActive = Math.floor(daysSinceStart / 7);
+    if (weeksActive > 0) {
+      stats.trainingConsistency = (S.workouts.length / weeksActive) / 7;
+    }
+  }
+  
+  if (mc.push > 0 && mc.pull > 0 && mc.legs > 0 && mc.core > 0) {
+    const vals = Object.values(mc);
+    const max = Math.max(...vals);
+    const min = Math.min(...vals);
+    const ratio = min / max;
+    if (ratio >= 0.5) stats.muscleBalance = 'balanced';
+    else stats.muscleBalance = 'unbalanced';
+  } else {
+    stats.muscleBalance = 'growing';
+  }
+  
+  const nextStreakMilestone = Math.ceil(stats.currentStreak / 7) * 7;
+  if (nextStreakMilestone > stats.currentStreak) {
+    stats.nextMilestone = {days: nextStreakMilestone - stats.currentStreak, type: `${nextStreakMilestone} dias de streak`};
+  } else if (stats.currentStreak >= 30 && stats.totalWorkouts < 30) {
+    stats.nextMilestone = {days: 30 - stats.currentStreak, type: '30 dias de consistency'};
+  } else if (stats.totalWorkouts > 0 && stats.totalWorkouts < 50) {
+    stats.nextMilestone = {days: 50 - stats.totalWorkouts, type: '50 treinos'};
+  }
+  
   return stats;
 }
 
@@ -1821,25 +2013,158 @@ function generateAIAnalysis() {
   const stats = calculateDetailedStats();
   if (!stats.totalWorkouts) {
     return {
-      message:"👋 Bem-vindo! Ainda sem dados para análise. Comece registrando seu primeiro treino!",
-      suggestions:[{icon:"🎯",text:"Comece com exercícios básicos como flexões e agachamentos",badge:"Iniciante"},{icon:"📅",text:"Tente treinar 3x por semana para criar consistência",badge:"Meta"}]
+      message:"👋 Bem-vindo ao Ren! Este é seu assistente pessoal de calistenia. Comece registrando seu primeiro treino para desbloquear análises personalizadas!",
+      suggestions:[
+        {icon:"🎯",text:"Dica: Comece com push-ups, agachamentos e pull-ups básicos",badge:"Iniciante"},
+        {icon:"📅",text:"Meta inicial: 3 treinos por semana para criar rotina",badge:"Meta"},
+        {icon:"💪",text:"Calistenia trabalha múltiplos grupos musculares simultaneamente",badge:"Benefício"}
+      ]
     };
   }
-  let mainMessage="";
-  const suggestions=[];
-  if(stats.workoutsThisWeek>=3) mainMessage+="🎉 Ótima consistência! "+stats.workoutsThisWeek+"x esta semana. ";
-  else if(stats.workoutsThisWeek>0) mainMessage+="📈 "+stats.workoutsThisWeek+"x treinos esta semana. ";
-  else mainMessage+="📅 Você ainda não treinou esta semana. Que tal hoje? ";
-  if(stats.bestProgress&&stats.bestProgress.gain>0){mainMessage+=`Seu ${stats.bestProgress.exercise} melhorou em ${stats.bestProgress.gain} reps. `;suggestions.push({icon:"📈",text:`Continue no ${stats.bestProgress.exercise}`,badge:`+${stats.bestProgress.gain} reps`});}
-  const avg=Math.round(stats.avgVolumePerWorkout);
-  if(avg>100) mainMessage+=`Volume médio de ${avg} reps é excelente! `;
-  else if(avg>0) mainMessage+=`Volume médio: ${avg} reps/treino. `;
-  if(stats.mostTrainedMuscle){const mn={push:'Peito/Tríceps',pull:'Costas/Bíceps',legs:'Pernas',core:'Core'};suggestions.push({icon:"💪",text:`Foco em ${mn[stats.mostTrainedMuscle]}`,badge:`${stats.musclePercent}%`});}
-  if(stats.leastTrainedMuscle&&stats.leastTrainedMuscle!==stats.mostTrainedMuscle){const mn={push:'Push',pull:'Pull',legs:'Legs',core:'Core'};suggestions.push({icon:"⚖️",text:`Mais exercícios de ${mn[stats.leastTrainedMuscle]}`,badge:"Equilíbrio"});}
-  if(stats.currentStreak>0){const next=Math.ceil(stats.currentStreak/7)*7;suggestions.push({icon:"🔥",text:`Streak: ${stats.currentStreak} dias`,badge:`Meta: ${next}`});}
-  if(stats.predictedPR) suggestions.push({icon:"🎯",text:`PR previsto: ${stats.predictedPR.exercise}`,badge:`${stats.predictedPR.value} reps`});
-  if(suggestions.length<2){suggestions.push({icon:"💡",text:"Varie exercícios para estimular músculos diferentes",badge:"Dica"});suggestions.push({icon:"🧘",text:"Descanso e alongamento são parte do treino",badge:"Recuperação"});}
-  return {message:mainMessage||"Continue assim! Cada treino te deixa mais forte. 💪", suggestions};
+  
+  let mainMessage = "";
+  const suggestions = [];
+  const insights = [];
+  
+  const avg = Math.round(stats.avgVolumePerWorkout);
+  const now = new Date();
+  const dayOfWeek = now.getDay();
+  const isMidWeek = dayOfWeek >= 2 && dayOfWeek <= 4;
+  const isEndWeek = dayOfWeek >= 5;
+  
+  if (stats.workoutsThisWeek >= 4) {
+    mainMessage = `🔥🔥🔥 Semanas lendárias! ${stats.workoutsThisWeek}x esta semana - você está em modo elite! `;
+    insights.push({type: 'elite', text: 'Frequência de treino acima da média de atletas avançados'});
+  } else if (stats.workoutsThisWeek >= 3) {
+    mainMessage = `💪 consistency gold! ${stats.workoutsThisWeek}x essa semana. Isso é o que separa quem evolui de quem fica parado. `;
+    insights.push({type: 'good', text: 'Você está no caminho certo para resultados reais'});
+  } else if (stats.workoutsThisWeek > 0) {
+    mainMessage = `📊 ${stats.workoutsThisWeek}x essa semana. Vamos aumentar para 3x? `;
+    suggestions.push({icon:"🎯",text:"3-4 treinos/semana é o ponto ideal para progressão",badge:"Meta"});
+  } else {
+    mainMessage = `⚠️ Semana zerada. O corpo não evolui no descanso - hoje é dia de ação! `;
+    insights.push({type: 'warning', text: 'Parar mais de 7 dias quebra a adaptação muscular'});
+  }
+  
+  if (stats.currentStreak >= 7) {
+    mainMessage += `🏆 STREAK MÁGICO: ${stats.currentStreak} dias! Isso é mentalidade de campeão. `;
+    insights.push({type: 'streak', text: 'Streak de 7+ dias ativa o ciclo de hábito sustentável'});
+    if (stats.currentStreak % 30 === 0) {
+      suggestions.push({icon:"👑",text:`${stats.currentStreak} dias de consistency! Você é nível атлeта`,badge:"MILESTONE"});
+    }
+  } else if (stats.currentStreak > 0) {
+    mainMessage += `🔥 Streak de ${stats.currentStreak} dias. Cada dia conta! `;
+    const daysToNextMilestone = 7 - (stats.currentStreak % 7);
+    suggestions.push({icon:"🎯",text:`Faltam ${daysToNextMilestone} dias para o próximo marco de 7`,badge:"Próximo objetivo"});
+  }
+  
+  if (stats.bestProgress && stats.bestProgress.gain > 0) {
+    mainMessage += `📈 ${stats.bestProgress.exercise}: +${stats.bestProgress.gain} reps! Evolution is real. `;
+    suggestions.push({icon:"🚀",text:`Continue focando em ${stats.bestProgress.exercise} - você está perto do próximo nível`,badge:`+${stats.bestProgress.gain} reps`});
+    insights.push({type: 'progress', text: `Melhor exercício: ${stats.bestProgress.exercise}`});
+  }
+  
+  if (stats.worstExercise && stats.worstExercise.decline > 2) {
+    mainMessage += `⚠️ ${stats.worstExercise.exercise} caiu ${stats.worstExercise.decline} reps. Vamos recuperar? `;
+    suggestions.push({icon:"🔄",text:`Revise a técnica ou faça uma semana de recuperação com ${stats.worstExercise.exercise}`,badge:"Atenção"});
+  }
+  
+  if (avg > 120) {
+    mainMessage += `💎 Volume de ${avg} reps/treino. Você está construindo uma base sólida para skills avançados! `;
+    insights.push({type: 'high', text: 'Volume acima da média - corpo pronto para progressão'});
+  } else if (avg > 60) {
+    mainMessage += `📊 Volume médio de ${avg} reps/treino. Bom equilíbrio entre intensidade e recuperação. `;
+  } else if (avg > 0) {
+    mainMessage += `📉 Volume de ${avg} reps/treino. Hora de aumentar gradualmente! `;
+    suggestions.push({icon:"📈",text:"Aumente 2-3 reps por série a cada semana",badge:"Progressão"});
+  }
+  
+  if (stats.mostTrainedMuscle) {
+    const mn = {push: 'Push (Peito/Tríceps)', pull: 'Pull (Costas/Bíceps)', legs: 'Legs (Pernas)', core: 'Core (Abdômen)'};
+    const muscleEmoji = {push: '💪', pull: '🦾', legs: '🦵', core: '🧘'};
+    mainMessage += `${muscleEmoji[stats.mostTrainedMuscle]} Foco: ${mn[stats.mostTrainedMuscle]} (${stats.musclePercent}%) `;
+    suggestions.push({icon: muscleEmoji[stats.mostTrainedMuscle], text: `${mn[stats.mostTrainedMuscle]} está seu ponto forte`,badge: `${stats.musclePercent}%`});
+  }
+  
+  if (stats.leastTrainedMuscle && stats.leastTrainedMuscle !== stats.mostTrainedMuscle) {
+    const mn = {push: 'Push', pull: 'Pull', legs: 'Legs', core: 'Core'};
+    const muscleEmoji = {push: '💪', pull: '🦾', legs: '🦵', core: '🧘'};
+    mainMessage += `⚖️ ${mn[stats.leastTrainedMuscle]} precisa de atenção! `;
+    suggestions.push({icon: muscleEmoji[stats.leastTrainedMuscle], text: `Adicione 1-2 exercícios de ${mn[stats.leastTrainedMuscle]} por semana`,badge: "Equilíbrio muscular"});
+    insights.push({type: 'imbalance', text: 'Desequilíbrio detectado - corrja para evitar lesões'});
+  }
+  
+  if (stats.restDaysRatio < 0.1 && stats.totalWorkouts > 5) {
+    mainMessage += `⚠️ Poucos dias de descanso! Seu corpo precisa recuperação para crescer. `;
+    suggestions.push({icon:"😴",text:"Agende 1-2 dias de descanso por semana",badge:"Recuperação"});
+    insights.push({type: 'warning', text: 'Sobretreino: risco de lesão e Plateau'});
+  } else if (stats.restDaysRatio > 0.3) {
+    mainMessage += `💤 Bom equilíbrio de descanso! Recuperação é quando o músculo cresce. `;
+  }
+  
+  if (stats.predictedPR) {
+    suggestions.push({icon: "🎯", text: `PR iminente: ${stats.predictedPR.exercise} pode atingir ${stats.predictedPR.value} reps`,badge: "Previsão"});
+  }
+  
+  if (stats.peakDay) {
+    const dayNames = {0: 'Domingo', 1: 'Segunda', 2: 'Terça', 3: 'Quarta', 4: 'Quinta', 5: 'Sexta', 6: 'Sábado'};
+    suggestions.push({icon: "📅", text: `Seu melhor dia é ${dayNames[stats.peakDay]} - aproveite esse padrão!`,badge: "Insight"});
+  }
+  
+  if (stats.trainingConsistency > 0.8) {
+    insights.push({type: 'elite', text: 'Consistência de treino acima de 80% - você é atleta'});
+  } else if (stats.trainingConsistency < 0.5) {
+    insights.push({type: 'warning', text: 'Consistência baixa - foque em criar rotina primeiro'});
+  }
+  
+  if (stats.daysSinceLastWorkout > 3 && stats.daysSinceLastWorkout < 7) {
+    mainMessage += `⏰ ${stats.daysSinceLastWorkout} dias sem treino. Não quebre a corrente! `;
+    suggestions.push({icon:"🔥",text:"Volte hoje para recuperar o momentum",badge: "Urgente"});
+  }
+  
+  if (stats.weeklyProgress > 10) {
+    mainMessage += `📈 Progresso semanal de +${stats.weeklyProgress} reps! Você está em ascensão! `;
+    insights.push({type: 'progress', text: 'Curva de progressão excelente'});
+  } else if (stats.weeklyProgress < -10) {
+    mainMessage += `📉 Queda de ${Math.abs(stats.weeklyProgress)} reps essa semana. Revise intensidade! `;
+    suggestions.push({icon:"🔧",text:"Reduza carga e foque em técnica por 1 semana",badge: "Recuperação"});
+  }
+  
+  if (stats.hasPlateau) {
+    mainMessage += `🛑 Você está em platô há ${stats.plateauWeeks} semanas. Mude a variação ou intensifique! `;
+    suggestions.push({icon:"🔄",text:"Tente variação mais difícil do exercício ou adicione.weight vest",badge: "Sair do platô"});
+    insights.push({type: 'plateau', text: 'Platô detectado - momento de mudar estratégia'});
+  }
+  
+  if (stats.totalPRs > 0) {
+    suggestions.push({icon: "🏆", text: `${stats.totalPRs} records quebrados no total! Mostre essa garra`,badge: "Recorde"});
+  }
+  
+  if (stats.totalVolumeAllTime > 10000) {
+    insights.push({type: 'elite', text: `🎉 +${Math.floor(stats.totalVolumeAllTime/1000)}k reps no total - você é lendário!`});
+  }
+  
+  const muscleBalance = stats.muscleBalance;
+  if (muscleBalance === 'balanced') {
+    suggestions.push({icon: "⚖️", text: "Músculos equilibrados! Continue mantendo essa distribuição",badge: "Ideal"});
+  } else if (muscleBalance === 'unbalanced') {
+    mainMessage += "⚠️ Desequilíbrio muscular detectado - corrja para evitar compensações. ";
+  }
+  
+  if (suggestions.length < 3) {
+    suggestions.push({icon: "💡", text: "Varie exercícios para manter o corpo adaptação constante",badge: "Dica"});
+    suggestions.push({icon: "🧘", text: "Alongamento e mobilidade são tão importantes quanto o treino",badge: "Longevidade"});
+  }
+  
+  if (stats.nextMilestone) {
+    suggestions.push({icon: "🎖️", text: `Próximo marco: ${stats.nextMilestone.days} dias para ${stats.nextMilestone.type}`,badge: "Objetivo"});
+  }
+  
+  return {
+    message: mainMessage || "Continue assim! Cada treino te deixa mais forte. 💪",
+    suggestions,
+    insights
+  };
 }
 
 function renderAIInsights() {
