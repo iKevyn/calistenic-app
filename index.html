@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -74,7 +75,92 @@ body{
   transition:transform 0.1s;
 }
 .streak-pill svg{width:14px;height:14px;flex-shrink:0}
+/* Entrada suave da página */
+@keyframes pageFadeIn {
+  0% { opacity: 0; transform: translateY(12px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+#app {
+  animation: pageFadeIn 0.5s ease-out;
+}
 
+/* Slide down do cabeçalho */
+@keyframes slideDown {
+  0% { opacity: 0; transform: translateY(-20px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+.page-header {
+  animation: slideDown 0.4s ease-out;
+}
+:root {
+  --transition-default: all 0.2s cubic-bezier(0.2, 0.9, 0.4, 1.1);
+  --transition-bounce: all 0.3s cubic-bezier(0.34, 1.2, 0.64, 1);
+}
+/* Modal que sobe de baixo */
+@keyframes slideUpModal {
+  0% { transform: translateY(100%); opacity: 0; }
+  100% { transform: translateY(0); opacity: 1; }
+}
+.modal-sheet {
+  animation: slideUpModal 0.35s cubic-bezier(0.2, 0.9, 0.4, 1.1);
+}
+.pr-row, .history-item, .tpl-card {
+  transition: var(--transition-default);
+}
+.pr-row:hover, .history-item:hover, .tpl-card:hover {
+  transform: translateX(4px);
+  background: var(--sep);
+}
+
+.ai-suggestion-item {
+  transition: var(--transition-default);
+}
+.ai-suggestion-item:hover {
+  transform: translateX(4px);
+}
+/* Modal central com scale */
+@keyframes scaleInModal {
+  0% { opacity: 0; transform: scale(0.95); }
+  100% { opacity: 1; transform: scale(1); }
+}
+.modal-sheet.center {
+  animation: scaleInModal 0.3s cubic-bezier(0.2, 0.9, 0.4, 1.2);
+}
+@keyframes pulse {
+  0% { box-shadow: 0 0 0 2px var(--primary); }
+  50% { box-shadow: 0 0 0 4px rgba(52,199,89,0.4); }
+  100% { box-shadow: 0 0 0 2px var(--primary); }
+}
+.cal-cell.today {
+  animation: pulse 1.5s infinite;
+}
+/* Fundo escurece suavemente */
+.modal-mask {
+  animation: fadeIn 0.2s ease-out;
+}
+/* Botões e cards com hover/active */
+.widget, .widget-hero, .fab, .icon-btn {
+  transition: var(--transition-bounce);
+}
+.widget:active { transform: scale(0.96); }
+.widget:hover { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(0,0,0,0.08); }
+
+.fab:hover { transform: scale(1.02); box-shadow: 0 8px 28px rgba(52,199,89,.5); }
+.fab:active { transform: scale(0.96); }
+
+.icon-btn:hover { transform: scale(1.05); }
+.icon-btn:active { transform: scale(0.92); }
+
+/* Seta dos widgets se move no hover */
+.widget:hover .w-arrow { transform: translateX(4px); }
+/* FadeInUp para cards, widgets, stats */
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.widget, .stat-mini, .week-strip, .section-label {
+  animation: fadeInUp 0.3s ease-out;
+}
 /* ── ICON BUTTONS ── */
 .icon-btn{
   width:32px;height:32px;border-radius:50%;
@@ -200,7 +286,7 @@ body{
 .hero-accent{position:absolute;top:0;left:0;right:0;height:3px;border-radius:var(--r3) var(--r3) 0 0}
 .hero-top{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:16px}
 .hero-label{font-size:11px;font-weight:600;color:var(--t3);text-transform:uppercase;letter-spacing:.4px;margin-bottom:3px}
-.hero-group{font-size:28px;font-weight:700;letter-spacing:-.5px;line-height:1.1}
+.hero-group{font-size:28px;font-weight:700;letter-spacing:-.5px;line-height:1}
 .hero-next-label{font-size:10px;font-weight:600;color:var(--t3);text-transform:uppercase;letter-spacing:.4px;margin-bottom:2px;text-align:right}
 .hero-next-val{font-size:13px;font-weight:600;color:var(--t2);text-align:right}
 .hero-stats{display:flex;gap:0;border-top:1px solid var(--sep);padding-top:14px}
@@ -528,7 +614,6 @@ body{
 
 /* ── ANIMATIONS ── */
 @keyframes fadeIn{from{opacity:0}to{opacity:1}}
-@keyframes fadeInUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
 @keyframes slideUp{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
 @keyframes scaleIn{from{opacity:0;transform:scale(.95)}to{opacity:1;transform:scale(1)}}
 
@@ -550,13 +635,13 @@ body{
         <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C9.5 6 8 8.5 8 11c0 2.2 1.8 4 4 4s4-1.8 4-4c0-2.5-1.5-5-4-9zM12 13c-1.1 0-2-.9-2-2 0-1.2.7-2.5 2-4 1.3 1.5 2 2.8 2 4 0 1.1-.9 2-2 2z"/></svg>
         <span id="streak-text">0 dias</span>
       </div>
-      <button class="icon-btn" id="refreshBtn" title="Atualizar" onclick="refreshPage()">
+      <button class="icon-btn" id="refreshBtn" title="Atualizar">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
       </button>
-      <button class="icon-btn" id="exportFileBtn" title="Exportar" onclick="exportToFile()">
+      <button class="icon-btn" id="exportFileBtn" title="Exportar">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
       </button>
-      <button class="icon-btn" id="importFileBtn" title="Importar" onclick="importFromFile()">
+      <button class="icon-btn" id="importFileBtn" title="Importar">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
       </button>
     </div>
@@ -618,13 +703,12 @@ body{
   <div class="section-label">Ferramentas</div>
   <div class="widget-grid">
     <!-- Widget Análise AI -->
-    <div class="widget w-green full-width" onclick="toggleAIMenu()" style="grid-column:1/-1">
+    <div class="widget w-green full-width" onclick="openAIModal()" style="grid-column:1/-1">
       <div style="display:flex;align-items:flex-start;justify-content:space-between">
         <div>
           <div class="w-ai-badge">
             <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2a2 2 0 0 1 2 2c0 .74-.4 1.39-1 1.73V7h1a7 7 0 0 1 7 7h1a1 1 0 0 1 1 1v3a1 1 0 0 1-1 1h-1v1a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-1H2a1 1 0 0 1-1-1v-3a1 1 0 0 1 1-1h1a7 7 0 0 1 7-7h1V5.73c-.6-.34-1-.99-1-1.73a2 2 0 0 1 2-2zM7.5 13a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3zm9 0a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3z"/></svg>
             Análise IA
-            ${geminiApiKey ? '<span style="background:var(--primary);color:white;padding:1px 6px;border-radius:10px;font-size:9px;margin-left:4px">AI</span>' : ''}
           </div>
           <div class="w-ai-content" id="ai-preview">Calculando sua análise...</div>
         </div>
@@ -776,7 +860,6 @@ const GROUP_NAMES={pull:'Pull 🦾',push:'Push 💪',legs:'Legs 🦵',core:'Core
 
 let S={workouts:[],restDays:[],templates:[],todayExercises:[]};
 let sessionType='workout', countType='reps';
-let geminiApiKey = localStorage.getItem('gemini_api_key') || 'AIzaSyC9ZlhpNzOJKIZdqYam7g7-N6eeMykExWY'; // Gemini API Key - substitua pela sua
 let calYear=new Date().getFullYear(), calMonth=new Date().getMonth();
 let chartWeek=null, chartMonth=null;
 
@@ -1709,765 +1792,60 @@ function editTemplate(idx) {
 }
 
 // ================================================================
-// AI ANALYSIS ENGINE - ROBUSTO
+// AI ANALYSIS ENGINE
 // ================================================================
 function calculateDetailedStats() {
-  const stats={
-    totalWorkouts: S.workouts.length,
-    workoutsThisWeek: 0,
-    workoutsLastWeek: 0,
-    avgVolumePerWorkout: 0,
-    avgVolumeLastMonth: 0,
-    mostTrainedMuscle: null,
-    leastTrainedMuscle: null,
-    musclePercent: 0,
-    muscleDistribution: {},
-    currentStreak: getStreak(),
-    bestStreak: 0,
-    bestProgress: null,
-    worstProgress: null,
-    predictedPRs: [],
-    trendingUp: [],
-    trendingDown: [],
-    stagnant: [],
-    aboveAverageExercises: [],
-    needsFocusMuscles: [],
-    isOvertraining: false,
-    isUndertraining: false,
-    intensityScore: 0,
-    recoveryScore: 100,
-    weeklyGoal: 3,
-    weeklyProgress: 0,
-    consistencyScore: 0,
-    volumeTrend: 0,
-    personalRecords: {}
-  };
-  
-  if (!stats.totalWorkouts) return stats;
-  
-  const now = new Date();
-  const ws = new Date(now); ws.setDate(now.getDate() - now.getDay());
-  const lastWeekStart = new Date(ws); lastWeekStart.setDate(ws.getDate() - 7);
-  
-  stats.workoutsThisWeek = S.workouts.filter(w => new Date(w.date + 'T12:00:00') >= ws).length;
-  stats.workoutsLastWeek = S.workouts.filter(w => {
-    const d = new Date(w.date + 'T12:00:00');
-    return d >= lastWeekStart && d < ws;
-  }).length;
-  
-  const totalVolume = S.workouts.reduce((s, w) => s + w.exercises.reduce((a, e) => a + (e.isTime ? 0 : e.sets * e.reps), 0), 0);
-  stats.avgVolumePerWorkout = totalVolume / stats.totalWorkouts;
-  
-  const thisMonth = now.toISOString().slice(0, 7);
-  const lastMonthDate = new Date(now); lastMonthDate.setMonth(lastMonthDate.getMonth() - 1);
-  const lastMonth = lastMonthDate.toISOString().slice(0, 7);
-  
-  const thisMonthVol = S.workouts.filter(w => w.date.startsWith(thisMonth))
-    .reduce((a, w) => a + w.exercises.reduce((b, e) => b + (e.isTime ? 0 : e.sets * e.reps), 0), 0);
-  const lastMonthVol = S.workouts.filter(w => w.date.startsWith(lastMonth))
-    .reduce((a, w) => a + w.exercises.reduce((b, e) => b + (e.isTime ? 0 : e.sets * e.reps), 0), 0);
-  stats.avgVolumeLastMonth = thisMonthVol / Math.max(1, S.workouts.filter(w => w.date.startsWith(thisMonth)).length);
-  
-  const mc = {push: 0, pull: 0, legs: 0, core: 0};
-  S.workouts.forEach(w => w.exercises.forEach(e => {
-    if (e.muscle) {
-      mc[e.muscle] = (mc[e.muscle] || 0) + (e.isTime ? 0 : e.sets * e.reps);
-    }
-  }));
-  
-  const totalMuscleVol = Object.values(mc).reduce((a, b) => a + b, 0);
-  stats.muscleDistribution = mc;
-  const sorted = Object.entries(mc).sort((a, b) => b[1] - a[1]);
-  if (sorted.length) {
-    stats.mostTrainedMuscle = sorted[0][0];
-    stats.musclePercent = Math.round(sorted[0][1] / totalMuscleVol * 100);
-    if (sorted.length > 1) stats.leastTrainedMuscle = sorted[sorted.length - 1][0];
-  }
-  
-  // Calcular melhor e pior progresso por exercício
-  const exerciseHistory = {};
-  S.workouts.forEach(w => w.exercises.forEach(e => {
-    if (!e.isTime) {
-      if (!exerciseHistory[e.ex]) exerciseHistory[e.ex] = [];
-      exerciseHistory[e.ex].push({reps: e.reps, date: w.date});
-    }
-  }));
-  
-  let bestEx = null, bestGain = 0, worstEx = null, worstLoss = 0;
-  Object.entries(exerciseHistory).forEach(([ex, history]) => {
-    if (history.length >= 2) {
-      history.sort((a, b) => new Date(a.date) - new Date(b.date));
-      const first = history[0].reps;
-      const last = history[history.length - 1].reps;
-      const avg = history.reduce((s, h) => s + h.reps, 0) / history.length;
-      const gain = last - first;
-      const recentAvg = history.slice(-3).reduce((s, h) => s + h.reps, 0) / Math.min(3, history.length);
-      
-      if (gain > bestGain) { bestGain = gain; bestEx = ex; }
-      if (gain < worstLoss) { worstLoss = gain; worstEx = ex; }
-      
-      // Detectar tendências
-      const trend = recentAvg - avg;
-      if (history.length >= 3) {
-        if (trend > 1) stats.trendingUp.push({exercise: ex, trend: Math.round(trend * 10) / 10});
-        else if (trend < -1) stats.trendingDown.push({exercise: ex, trend: Math.round(trend * 10) / 10});
-        else stats.stagnant.push({exercise: ex});
-      }
-      
-      // Verificar se está acima da média
-      if (recentAvg > avg * 1.1) {
-        stats.aboveAverageExercises.push({exercise: ex, aboveBy: Math.round((recentAvg / avg - 1) * 100)});
-      }
-      
-      // Predizer PR
-      if (history.length >= 2 && trend > 0) {
-        stats.predictedPRs.push({
-          exercise: ex,
-          current: last,
-          predicted: Math.round(last + trend * 1.5),
-          confidence: Math.min(90, 50 + history.length * 5)
-        });
-      }
-    }
-  });
-  
-  if (bestEx) stats.bestProgress = {exercise: bestEx, gain: bestGain, recentTrend: stats.trendingUp.find(t => t.exercise === bestEx)?.trend || 0};
-  if (worstEx) stats.worstProgress = {exercise: worstEx, loss: worstLoss};
-  
-  // Detectar músculos que precisam de foco (menos de 15% do volume total)
-  const idealPercent = 25;
-  Object.entries(mc).forEach(([muscle, vol]) => {
-    const percent = (vol / totalMuscleVol * 100);
-    if (percent < idealPercent * 0.6) {
-      stats.needsFocusMuscles.push({muscle, percent: Math.round(percent), gap: Math.round(idealPercent - percent)});
-    }
-  });
-  
-  // Calcular consistência (dias entre treinos)
-  const workoutDates = S.workouts.map(w => w.date).sort();
-  let gaps = [];
-  for (let i = 1; i < workoutDates.length; i++) {
-    const d1 = new Date(workoutDates[i-1]);
-    const d2 = new Date(workoutDates[i]);
-    gaps.push(Math.round((d2 - d1) / (1000 * 60 * 60 * 24)));
-  }
-  const avgGap = gaps.length ? gaps.reduce((a, b) => a + b, 0) / gaps.length : 7;
-  stats.consistencyScore = Math.max(0, Math.min(100, Math.round(100 - (avgGap - 2) * 15)));
-  
-  // Verificar overtraining (muitos treinos seguido sem descanso)
-  const recent7 = S.workouts.filter(w => {
-    const d = new Date(w.date + 'T12:00:00');
-    const diff = (now - d) / (1000 * 60 * 60 * 24);
-    return diff <= 7 && diff >= 0;
-  }).length;
-  stats.isOvertraining = recent7 >= 6;
-  stats.isUndertraining = recent7 <= 1;
-  
-  // Score de intensidade
-  stats.intensityScore = Math.min(100, Math.round((thisMonthVol / Math.max(1, stats.totalWorkouts)) * 10));
-  
-  // Progresso semanal
-  stats.weeklyProgress = Math.round((stats.workoutsThisWeek / stats.weeklyGoal) * 100);
-  
-  // Volume trend
-  if (lastMonthVol > 0) {
-    stats.volumeTrend = Math.round(((thisMonthVol - lastMonthVol) / lastMonthVol) * 100);
-  }
-  
-  // Calcular PRs por exercício
-  Object.keys(exerciseHistory).forEach(ex => {
-    const max = Math.max(...exerciseHistory[ex].map(h => h.reps));
-    stats.personalRecords[ex] = max;
-  });
-  
+  const stats={totalWorkouts:S.workouts.length,workoutsThisWeek:0,avgVolumePerWorkout:0,mostTrainedMuscle:null,leastTrainedMuscle:null,musclePercent:0,currentStreak:getStreak(),bestProgress:null,predictedPR:null};
+  if(!stats.totalWorkouts) return stats;
+  const now=new Date(); const ws=new Date(now); ws.setDate(now.getDate()-now.getDay());
+  stats.workoutsThisWeek=S.workouts.filter(w=>new Date(w.date+'T12:00:00')>=ws).length;
+  const totalVolume=S.workouts.reduce((s,w)=>s+w.exercises.reduce((a,e)=>a+(e.isTime?0:e.sets*e.reps),0),0);
+  stats.avgVolumePerWorkout=totalVolume/stats.totalWorkouts;
+  const mc={push:0,pull:0,legs:0,core:0};
+  S.workouts.forEach(w=>w.exercises.forEach(e=>{if(e.muscle)mc[e.muscle]=(mc[e.muscle]||0)+1;}));
+  const total=Object.values(mc).reduce((a,b)=>a+b,0);
+  const sorted=Object.entries(mc).sort((a,b)=>b[1]-a[1]);
+  if(sorted.length){stats.mostTrainedMuscle=sorted[0][0];stats.musclePercent=Math.round(sorted[0][1]/total*100);if(sorted.length>1)stats.leastTrainedMuscle=sorted[sorted.length-1][0];}
+  const progress={};
+  S.workouts.forEach(w=>w.exercises.forEach(e=>{if(!e.isTime){if(!progress[e.ex])progress[e.ex]=[];progress[e.ex].push(e.reps);}}));
+  let bestEx=null,bestGain=0;
+  Object.entries(progress).forEach(([ex,reps])=>{if(reps.length>=2){const gain=Math.max(...reps)-Math.min(...reps);if(gain>bestGain){bestGain=gain;bestEx=ex;}}});
+  if(bestEx) stats.bestProgress={exercise:bestEx.split(' ')[0],gain:bestGain};
+  const lastWorkouts=S.workouts.slice(-5); const trends={};
+  lastWorkouts.forEach(w=>w.exercises.forEach(e=>{if(!e.isTime){if(!trends[e.ex])trends[e.ex]=[];trends[e.ex].push(e.reps);}}));
+  Object.entries(trends).forEach(([ex,reps])=>{if(reps.length>=2){const trend=reps[reps.length-1]-reps[0];if(trend>0)stats.predictedPR={exercise:ex.split(' ')[0],value:Math.max(...reps)+Math.ceil(trend/reps.length)};}});
   return stats;
 }
 
 function generateAIAnalysis() {
   const stats = calculateDetailedStats();
-  
   if (!stats.totalWorkouts) {
     return {
-      message: "👋 Bem-vindo ao Ren! Comece registrando seu primeiro treino para receber análises personalizadas.",
-      suggestions: [
-        {icon: "🎯", text: "Comece com Push (flexões) para construir base", badge: "Sugestão"},
-        {icon: "📅", text: "Treine 3x por semana para criar consistência", badge: "Meta"},
-        {icon: "💪", text: "Use os templates para seguir uma estrutura", badge: "Dica"}
-      ],
-      analysis: {
-        streak: 0,
-        weeklyProgress: 0,
-        muscleBalance: "unknown",
-        motivation: "high"
-      }
+      message:"👋 Bem-vindo! Ainda sem dados para análise. Comece registrando seu primeiro treino!",
+      suggestions:[{icon:"🎯",text:"Comece com exercícios básicos como flexões e agachamentos",badge:"Iniciante"},{icon:"📅",text:"Tente treinar 3x por semana para criar consistência",badge:"Meta"}]
     };
   }
-  
-  const suggestions = [];
-  let mainMessage = "";
-  const mn = {push: "Push (Peito/Ombro/Tríceps)", pull: "Pull (Costas/Bíceps)", legs: "Legs (Pernas)", core: "Core (Abdômen)"};
-  const mnShort = {push: "Push", pull: "Pull", legs: "Legs", core: "Core"};
-  
-  // ============ ANÁLISE DE CONSISTÊNCIA ============
-  if (stats.workoutsThisWeek >= 4) {
-    mainMessage += "🔥 Incrível! Você treinou " + stats.workoutsThisWeek + "x esta semana. ";
-    suggestions.push({icon: "🔥", text: "Você está em ritmo forte! Considere um dia de descanso se sentir fadiga.", badge: "Alta"});
-  } else if (stats.workoutsThisWeek >= stats.weeklyGoal) {
-    mainMessage += "✅Meta semanal atingida! " + stats.workoutsThisWeek + "/" + stats.weeklyGoal + " treinos. ";
-    suggestions.push({icon: "✅", text: "Meta atingida! Que tal um desafio extra na próxima semana?", badge: "Concluído"});
-  } else if (stats.workoutsThisWeek > 0) {
-    const remaining = stats.weeklyGoal - stats.workoutsThisWeek;
-    mainMessage += "📈 " + stats.workoutsThisWeek + "x esta semana. Faltam " + remaining + " para atingir a meta! ";
-    suggestions.push({icon: "🎯", text: "Complete " + remaining + " treino(s) essa semana para atingir sua meta.", badge: "Meta"});
-  } else {
-    mainMessage += "⚠️ Esta semana você ainda não treinou. Que tal começar hoje? ";
-    suggestions.push({icon: "💪", text: "Hoje é um bom dia para treinar! Comece com seu grupo favorito.", badge: "Urgente"});
-  }
-  
-  // ============ ANÁLISE DE STREAK ============
-  if (stats.currentStreak >= 7) {
-    mainMessage += "🏆 Streak de " + stats.currentStreak + " dias! Você está em chamas! ";
-    suggestions.push({icon: "🔥", text: "Streak impressionante de " + stats.currentStreak + " dias! Mantenha esse ritmo!", badge: "🔥 " + stats.currentStreak + " dias"});
-  } else if (stats.currentStreak > 0) {
-    const next = Math.ceil(stats.currentStreak / 7) * 7;
-    const remaining = next - stats.currentStreak;
-    mainMessage += "🔥 Streak de " + stats.currentStreak + " dias. ";
-    suggestions.push({icon: "🎯", text: "Faltam " + remaining + " dias para um novo marco de " + next + " dias!", badge: "Próximo: " + next});
-  }
-  
-  // ============ ANÁLISE DE PROGRESSO ============
-  if (stats.bestProgress && stats.bestProgress.gain > 0) {
-    const trendText = stats.bestProgress.recentTrend > 0 ? " (+" + stats.bestProgress.recentTrend + "recent)" : "";
-    mainMessage += "📈 " + stats.bestProgress.exercise + " melhorou " + stats.bestProgress.gain + " reps no total" + trendText + ". ";
-    suggestions.push({icon: "📈", text: "Continue focando em " + stats.bestProgress.exercise + " - você está evoluindo bem!", badge: "+" + stats.bestProgress.gain + " reps"});
-  }
-  
-  if (stats.worstProgress && stats.worstProgress.loss < -2) {
-    suggestions.push({icon: "⚠️", text: stats.worstProgress.exercise + " caiu " + Math.abs(stats.worstProgress.loss) + " reps. Considere reduzir peso ou variar o exercício.", badge: "Atenção"});
-  }
-  
-  // ============ ELOGIOS QUANDO ACIMA DA MÉDIA ============
-  if (stats.aboveAverageExercises.length > 0) {
-    const above = stats.aboveAverageExercises[0];
-    suggestions.push({icon: "⭐", text: above.exercise + " está " + above.aboveBy + "% acima da sua média! Você está forte nesse exercício!", badge: "Acima da média"});
-  }
-  
-  // ============ PREDIÇÃO DE PR ============
-  if (stats.predictedPRs.length > 0) {
-    const pr = stats.predictedPRs[0];
-    suggestions.push({icon: "🎯", text: "PR previsto para " + pr.exercise + ": " + pr.predicted + " reps (atual: " + pr.current + ")", badge: pr.confidence + "% confiança"});
-  }
-  
-  // ============ ANÁLISE DE TENDÊNCIA ============
-  if (stats.trendingUp.length > 0) {
-    const top = stats.trendingUp[0];
-    suggestions.push({icon: "🚀", text: top.exercise + " está subindo! +" + top.trend + " reps de média recente.", badge: "Em alta"});
-  }
-  
-  if (stats.trendingDown.length > 0) {
-    const down = stats.trendingDown[0];
-    suggestions.push({icon: "📉", text: down.exercise + " está em queda (" + down.trend + " reps). Ajuste a carga ou descanse mais.", badge: "Atenção"});
-  }
-  
-  // ============ EQUILÍBRIO MUSCULAR ============
-  if (stats.mostTrainedMuscle) {
-    suggestions.push({icon: "💪", text: "Foco atual: " + mn[stats.mostTrainedMuscle] + " (" + stats.musclePercent + "% do volume)", badge: stats.musclePercent + "%"});
-  }
-  
-  if (stats.needsFocusMuscles.length > 0) {
-    const needs = stats.needsFocusMuscles[0];
-    suggestions.push({icon: "⚖️", text: mnShort[needs.muscle] + " está com apenas " + needs.percent + "% - faltam " + needs.gap + "% para equilibrar. Que tal um dia de " + needs.muscle + "?", badge: "Equilíbrio"});
-  }
-  
-  // ============ VOLUME E INTENSIDADE ============
-  const avg = Math.round(stats.avgVolumePerWorkout);
-  if (avg > 100) {
-    mainMessage += "Volume médio de " + avg + " reps por treino - muito acima da média! ";
-    suggestions.push({icon: "💪", text: "Seu volume está excellent! Continue assim para hypertrophy.", badge: "Alto volume"});
-  } else if (avg > 50) {
-    mainMessage += "Volume médio: " + avg + " reps/treino. ";
-    suggestions.push({icon: "📊", text: "Bons volumes de treino. Pode aumentar gradualmente se sentir capacidade.", badge: "Moderado"});
-  }
-  
-  // ============ OVER/UNDER TRAINING ============
-  if (stats.isOvertraining) {
-    suggestions.push({icon: "🛑", text: "Você treinou bastante essa semana. Considere um dia de recuperação hoje.", badge: "Descanso"});
-  }
-  
-  if (stats.isUndertraining && stats.totalWorkouts > 5) {
-    suggestions.push({icon: "⚠️", text: "Você está abaixo do habitual essa semana. Que tal treinar hoje?", badge: "Retomar"});
-  }
-  
-  // ============ CONSISTÊNCIA ============
-  if (stats.consistencyScore >= 80) {
-    suggestions.push({icon: "⭐", text: "Sua consistência é excelente! Continue mantendo.", badge: stats.consistencyScore + "%"});
-  } else if (stats.consistencyScore < 50 && stats.totalWorkouts > 3) {
-    suggestions.push({icon: "📅", text: "Tente espaçar melhor seus treinos para manter consistência.", badge: "Dica"});
-  }
-  
-  // ============ COMPARAÇÃO MENSAL ============
-  if (stats.volumeTrend !== 0) {
-    if (stats.volumeTrend > 10) {
-      suggestions.push({icon: "📈", text: "Seu volume aumentou " + stats.volumeTrend + "% vs mês passado! Crescimento sólido.", badge: "+" + stats.volumeTrend + "%"});
-    } else if (stats.volumeTrend < -10) {
-      suggestions.push({icon: "📉", text: "Volume caiu " + Math.abs(stats.volumeTrend) + "% vs mês passado. Tente recuperar o ritmo.", badge: "-" + Math.abs(stats.volumeTrend) + "%"});
-    }
-  }
-  
-  // ============ DICAS VARIADAS ============
-  if (suggestions.length < 3) {
-    const tips = [
-      {icon: "🧘", text: "Alongamento e mobilidade melhoram seu desempenho", badge: "Dica"},
-      {icon: "🥗", text: "Nutrição adequada potencializa seus resultados", badge: "Dica"},
-      {icon: "😴", text: "Descanso é essencial - durma 7-8 horas", badge: "Recuperação"},
-      {icon: "💧", text: "Hidrate-se bem antes e depois do treino", badge: "Dica"},
-      {icon: "🔄", text: "Varie exercícios para estimular crescimento", badge: "Progresso"}
-    ];
-    suggestions.push(...tips.slice(0, 3 - suggestions.length));
-  }
-  
-  // ============ RECOMENDAÇÃO DE GRUPO ============
-  const nextGroup = guessNextGroup();
-  suggestions.push({icon: "➡️", text: "Próximo grupo recomendado: " + mnShort[nextGroup], badge: "Sugestão"});
-  
-  const analysisData = {
-    streak: stats.currentStreak,
-    weeklyProgress: stats.weeklyProgress,
-    muscleBalance: stats.mostTrainedMuscle ? 
-      (stats.musclePercent >= 35 ? "desequilibrado" : stats.musclePercent >= 20 ? "razoável" : "bom") : "unknown",
-    motivation: stats.workoutsThisWeek >= 3 ? "alta" : stats.workoutsThisWeek > 0 ? "média" : "baixa",
-    isOvertraining: stats.isOvertraining,
-    isUndertraining: stats.isUndertraining,
-    volumeTrend: stats.volumeTrend,
-    consistencyScore: stats.consistencyScore
-  };
-  
-  return {
-    message: mainMessage || "Continue assim! Cada treino te deixa mais forte. 💪",
-    suggestions: suggestions.slice(0, 6),
-    analysis: analysisData,
-    detailed: stats
-  };
+  let mainMessage="";
+  const suggestions=[];
+  if(stats.workoutsThisWeek>=3) mainMessage+="🎉 Ótima consistência! "+stats.workoutsThisWeek+"x esta semana. ";
+  else if(stats.workoutsThisWeek>0) mainMessage+="📈 "+stats.workoutsThisWeek+"x treinos esta semana. ";
+  else mainMessage+="📅 Você ainda não treinou esta semana. Que tal hoje? ";
+  if(stats.bestProgress&&stats.bestProgress.gain>0){mainMessage+=`Seu ${stats.bestProgress.exercise} melhorou em ${stats.bestProgress.gain} reps. `;suggestions.push({icon:"📈",text:`Continue no ${stats.bestProgress.exercise}`,badge:`+${stats.bestProgress.gain} reps`});}
+  const avg=Math.round(stats.avgVolumePerWorkout);
+  if(avg>100) mainMessage+=`Volume médio de ${avg} reps é excelente! `;
+  else if(avg>0) mainMessage+=`Volume médio: ${avg} reps/treino. `;
+  if(stats.mostTrainedMuscle){const mn={push:'Peito/Tríceps',pull:'Costas/Bíceps',legs:'Pernas',core:'Core'};suggestions.push({icon:"💪",text:`Foco em ${mn[stats.mostTrainedMuscle]}`,badge:`${stats.musclePercent}%`});}
+  if(stats.leastTrainedMuscle&&stats.leastTrainedMuscle!==stats.mostTrainedMuscle){const mn={push:'Push',pull:'Pull',legs:'Legs',core:'Core'};suggestions.push({icon:"⚖️",text:`Mais exercícios de ${mn[stats.leastTrainedMuscle]}`,badge:"Equilíbrio"});}
+  if(stats.currentStreak>0){const next=Math.ceil(stats.currentStreak/7)*7;suggestions.push({icon:"🔥",text:`Streak: ${stats.currentStreak} dias`,badge:`Meta: ${next}`});}
+  if(stats.predictedPR) suggestions.push({icon:"🎯",text:`PR previsto: ${stats.predictedPR.exercise}`,badge:`${stats.predictedPR.value} reps`});
+  if(suggestions.length<2){suggestions.push({icon:"💡",text:"Varie exercícios para estimular músculos diferentes",badge:"Dica"});suggestions.push({icon:"🧘",text:"Descanso e alongamento são parte do treino",badge:"Recuperação"});}
+  return {message:mainMessage||"Continue assim! Cada treino te deixa mais forte. 💪", suggestions};
 }
 
 function renderAIInsights() {
   const analysis = generateAIAnalysis();
   const preview = document.getElementById('ai-preview');
-  if (preview) {
-    // Mostrar insights mais ricos no preview
-    let previewText = analysis.message;
-    
-    // Adicionar indicadores visuais no preview
-    if (analysis.analysis.streak > 0) {
-      previewText += " 🔥" + analysis.analysis.streak;
-    }
-    if (analysis.analysis.muscleBalance === "bom") {
-      previewText += " ⚖️";
-    }
-    
-    preview.textContent = previewText;
-  }
-  updateAIBadge();
-}
-
-// Adicionar função para calcular recomendação de peso
-function getWeightRecommendation(exercise) {
-  const allReps = S.workouts.flatMap(w => w.exercises)
-    .filter(e => e.ex === exercise && !e.isTime)
-    .map(e => e.reps);
-  
-  if (allReps.length < 3) return null;
-  
-  const avg = allReps.reduce((a, b) => a + b, 0) / allReps.length;
-  const max = Math.max(...allReps);
-  const recent = allReps.slice(-3);
-  const recentAvg = recent.reduce((a, b) => a + b, 0) / recent.length;
-  
-  // Se últimos 3平均 > média + 2, sugerimos aumentar
-  if (recentAvg > avg + 2) {
-    return {
-      action: "aumentar",
-      reason: "Sua média recente está acima da média geral",
-      suggested: Math.round(recentAvg + 1),
-      current: Math.round(avg)
-    };
-  }
-  
-  // Se últimos 3平均 < média - 2, sugerimos manter ou reduzir
-  if (recentAvg < avg - 2) {
-    return {
-      action: "manter",
-      reason: "Recentes abaixo da média - foque em consistência",
-      suggested: Math.round(avg),
-      current: Math.round(recentAvg)
-    };
-  }
-  
-  // Se estável há um tempo, manter
-  return {
-    action: "manter",
-    reason: "Você está consistente - mantenha o foco",
-    suggested: Math.round(recentAvg),
-    current: Math.round(recentAvg)
-  };
-}
-
-// Adicionar análise de foco muscular
-function getMuscleFocusRecommendation() {
-  const stats = calculateDetailedStats();
-  const mc = stats.muscleDistribution;
-  const total = Object.values(mc).reduce((a, b) => a + b, 0);
-  if (total === 0) return null;
-  
-  const recommendations = [];
-  const idealPercent = 25;
-  
-  Object.entries(mc).forEach(([muscle, vol]) => {
-    const percent = (vol / total * 100);
-    if (percent < idealPercent * 0.6) {
-      recommendations.push({
-        muscle,
-        percent: Math.round(percent),
-        gap: Math.round(idealPercent - percent),
-        priority: percent < 10 ? "alta" : percent < 15 ? "média" : "baixa"
-      });
-    } else if (percent > idealPercent * 1.4) {
-      recommendations.push({
-        muscle,
-        percent: Math.round(percent),
-        gap: Math.round(percent - idealPercent),
-        priority: "manter",
-        type: "manter"
-      });
-    }
-  });
-  
-  return recommendations.sort((a, b) => {
-    if (a.priority === "alta" && b.priority !== "alta") return -1;
-    if (b.priority === "alta" && a.priority !== "alta") return 1;
-    return b.gap - a.gap;
-  });
-}
-
-function updateAIBadge() {
-  const badge = document.querySelector('.w-ai-badge');
-  if (!badge) return;
-  const existingPro = badge.querySelector('.pro-badge');
-  if (existingPro) existingPro.remove();
-  if (geminiApiKey) {
-    const pro = document.createElement('span');
-    pro.className = 'pro-badge';
-    pro.style.cssText = 'background:var(--primary);color:white;padding:1px 6px;border-radius:10px;font-size:9px;margin-left:4px';
-    pro.textContent = 'AI';
-    badge.appendChild(pro);
-  }
-}
-
-// ================================================================
-// GEMINI API INTEGRATION (GRATUITA)
-// ================================================================
-async function callGemini(prompt) {
-  if (!geminiApiKey) return null;
-  try {
-    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiApiKey}`, {
-      method: 'POST',
-      headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({
-        contents: [{parts: [{text: prompt}]}],
-        generationConfig: {maxOutputTokens: 500, temperature: 0.7}
-      })
-    });
-    if (!response.ok) {
-      const err = await response.json();
-      throw new Error(err.error?.message || 'API Error');
-    }
-    const data = await response.json();
-    return data.candidates?.[0]?.content?.parts?.[0]?.text || null;
-  } catch (e) {
-    console.error('Gemini Error:', e);
-    return null;
-  }
-}
-
-function buildWorkoutSummary() {
-  const stats = calculateDetailedStats();
-  const recentWorkouts = S.workouts.slice(-10);
-  let summary = `## Dados do Usuário
-- Total de treinos: ${S.workouts.length}
-- Streak atual: ${stats.currentStreak} dias
-- Treinos esta semana: ${stats.workoutsThisWeek}
-- Volume médio por treino: ${Math.round(stats.avgVolumePerWorkout)} reps
-- Músculo mais treinado: ${stats.mostTrainedMuscle || 'N/A'}
-- Músculo menos treinado: ${stats.leastTrainedMuscle || 'N/A'}
-
-## Últimos 10 treinos:
-`;
-  recentWorkouts.forEach(w => {
-    const vol = w.exercises.reduce((a,e) => a + (e.isTime ? 0 : e.sets * e.reps), 0);
-    const exercises = w.exercises.map(e => `${e.ex}: ${e.sets}x${e.reps}${e.isTime ? 's' : 'r'}`).join(', ');
-    summary += `- ${w.date}: ${vol} reps - ${exercises}\n`;
-  });
-  return summary;
-}
-
-async function getDeepSeekInsights() {
-  const preview = document.getElementById('ai-preview');
-  
-  if (!geminiApiKey) {
-    const localAnalysis = generateAIAnalysis();
-    if (preview) preview.textContent = localAnalysis.message;
-    return;
-  }
-  
-  if (preview) preview.textContent = '🤖 Consultando Gemini...';
-  
-  const summary = buildWorkoutSummary();
-  const prompt = `Você é um coach de calistenia especialista. Analise os dados de treino e dê 3 insights práticos e motivacionais em português brasileiro. Formate como: [emoji] Texto do insight | Prioridade: Alta/Média/Baixa (cada insight em uma linha).
-
-Dados: ${summary}
-
-Responda apenas com os 3 insights formatados, sem outros textos.`;
-
-  const result = await callGemini(prompt);
-  
-  if (result) {
-    const insights = result.split('\n').filter(l => l.trim());
-    const suggestions = insights.slice(0, 3).map((line) => {
-      const parts = line.match(/\[([^\]]+)\]\s*(.+?)\s*\|\s*Prioridade:\s*(\w+)/);
-      if (parts) {
-        return {icon: parts[1], text: parts[2], badge: parts[3]};
-      }
-      return {icon: '💡', text: line.substring(0, 80), badge: 'Dica'};
-    });
-    if (suggestions.length > 0) {
-      if (preview) preview.textContent = '🤖 ' + suggestions[0].text.substring(0, 50) + '...';
-      return;
-    }
-  }
-  
-  const localAnalysis = generateAIAnalysis();
-  if (preview) preview.textContent = localAnalysis.message;
-}
-
-// ================================================================
-// AI MODAL
-// ================================================================
-let aiMenuOpen = false;
-
-function toggleAIMenu() {
-  if (aiMenuOpen) {
-    const menu = document.getElementById('ai-menu-popup');
-    if (menu) menu.remove();
-    aiMenuOpen = false;
-    return;
-  }
-  
-  aiMenuOpen = true;
-  const widget = document.querySelector('.widget.w-green.full-width');
-  const rect = widget.getBoundingClientRect();
-  
-  const menu = document.createElement('div');
-  menu.id = 'ai-menu-popup';
-  menu.style.cssText = `
-    position: fixed;
-    top: ${rect.bottom + 8}px;
-    left: 16px;
-    right: 16px;
-    max-width: 430px;
-    margin: 0 auto;
-    background: var(--card);
-    border-radius: 16px;
-    box-shadow: 0 8px 32px rgba(0,0,0,.2);
-    z-index: 1001;
-    overflow: hidden;
-    animation: scaleIn .15s ease-out;
-  `;
-  
-  menu.innerHTML = `
-    <div style="padding:16px;${!geminiApiKey ? 'border-bottom:1px solid var(--sep)' : ''}">
-      <div style="font-size:13px;font-weight:600;margin-bottom:8px">🧠 Análise Inteligente</div>
-      <div style="font-size:12px;color:var(--t3)">
-        ${geminiApiKey ? 'Insights powered by Gemini (gratuito)' : 'Configure a API para insights avançados'}
-      </div>
-    </div>
-    <div onclick="closeAIMenu(); openAIModal();" style="padding:14px 16px;display:flex;align-items:center;gap:10px;cursor:pointer;border-bottom:1px solid var(--sep)">
-      <span style="font-size:20px">📊</span>
-      <div><div style="font-size:14px;font-weight:500">Ver análise completa</div><div style="font-size:11px;color:var(--t3)">Sugestões personalizadas</div></div>
-    </div>
-    <div onclick="closeAIMenu(); openDeepSeekSettings();" style="padding:14px 16px;display:flex;align-items:center;gap:10px;cursor:pointer">
-      <span style="font-size:20px">⚙️</span>
-      <div><div style="font-size:14px;font-weight:500">Configurar API</div><div style="font-size:11px;color:var(--t3)">${geminiApiKey ? 'Gemini conectado' : 'Conectar Gemini'}</div></div>
-    </div>
-  `;
-  
-  document.body.appendChild(menu);
-  
-  setTimeout(() => {
-    document.addEventListener('click', closeAIMenuOnClick, {once: true});
-  }, 10);
-}
-
-function closeAIMenu() {
-  const menu = document.getElementById('ai-menu-popup');
-  if (menu) menu.remove();
-  aiMenuOpen = false;
-}
-
-function closeAIMenuOnClick(e) {
-  const menu = document.getElementById('ai-menu-popup');
-  if (menu && !menu.contains(e.target) && !e.target.closest('.widget.w-green') && !e.target.closest('#importFileBtn') && !e.target.closest('#exportFileBtn')) {
-    closeAIMenu();
-  }
-}
-
-function openAIModal() {
-  const modalId = 'aiModal';
-  let el = document.getElementById(modalId);
-  if (el) el.remove();
-  el = document.createElement('div');
-  el.id = modalId;
-  el.className = 'modal-mask';
-  el.addEventListener('click', e => { if(e.target === el) el.remove(); });
-  
-  const hasApiKey = !!geminiApiKey;
-  
-  el.innerHTML = `
-    <div class="modal-sheet" style="max-height:85vh">
-      <div class="modal-handle"></div>
-      <div class="modal-header-bar">
-        <span class="modal-title">🧠 ${hasApiKey ? 'Insights Gemini' : 'Análise Local'}</span>
-        <button class="modal-close" onclick="document.getElementById('${modalId}').remove()">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-        </button>
-      </div>
-      <div class="modal-body" id="ai-modal-content">
-        <div style="text-align:center;padding:20px">
-          <div style="font-size:24px;margin-bottom:8px">⏳</div>
-          <div style="color:var(--t3)">Carregando...</div>
-        </div>
-      </div>
-    </div>
-  `;
-  document.body.appendChild(el);
-  
-  if (hasApiKey) {
-    getDeepSeekInsightsInModal();
-  } else {
-    renderLocalAIAnalysisInModal();
-  }
-}
-
-async function getDeepSeekInsightsInModal() {
-  const content = document.getElementById('ai-modal-content');
-  content.innerHTML = `
-    <div style="text-align:center;padding:20px">
-      <div style="font-size:24px;margin-bottom:8px">🤖</div>
-      <div style="color:var(--t3)">Consultando Gemini...</div>
-    </div>
-  `;
-  
-  const summary = buildWorkoutSummary();
-  const prompt = `Você é um coach de calistenia expert. Analise os dados e dê exatamente 4 insights práticos e motivacionais em português brasileiro. Formate como: [emoji] | insight | Prioridade
-
-Dados: ${summary}
-
-Responda APENAS com 4 linhas neste formato, nada mais.`;
-
-  const result = await callGemini(prompt);
-  
-  if (result) {
-    const lines = result.split('\n').filter(l => l.trim() && l.includes('|'));
-    const insights = lines.slice(0, 4).map(line => {
-      const parts = line.split('|').map(p => p.trim());
-      return {
-        icon: parts[0] || '💡',
-        text: parts[1] || '',
-        badge: parts[2] || 'Dica'
-      };
-    });
-    
-    if (insights.length > 0) {
-      renderInsightsInModal(insights, true);
-      return;
-    }
-  }
-  
-  renderLocalAIAnalysisInModal();
-}
-
-function renderLocalAIAnalysisInModal() {
-  const analysis = generateAIAnalysis();
-  renderInsightsInModal(analysis.suggestions, false);
-}
-
-function renderInsightsInModal(suggestions, isDeepSeek) {
-  const content = document.getElementById('ai-modal-content');
-  let sugHtml = suggestions.map(s=>`
-    <div class="ai-suggestion-item">
-      <span style="font-size:18px">${s.icon}</span>
-      <span>${s.text}</span>
-      <span class="ai-badge">${s.badge}</span>
-    </div>
-  `).join('');
-  
-  content.innerHTML = `
-    <div class="ai-message" style="margin-bottom:16px">
-      ${isDeepSeek ? '🤖 Insights personalizados do Gemini' : '📊 Insights locais baseados nos seus dados'}
-    </div>
-    <div class="ai-suggestions">${sugHtml}</div>
-    <div style="margin-top:16px;padding-top:16px;border-top:1px solid var(--sep)">
-      <button class="btn-sm" style="width:100%" onclick="openDeepSeekSettings()">
-        ${geminiApiKey ? '🔄 Recarregar com Gemini' : '⚙️ Configurar Gemini API'}
-      </button>
-    </div>
-  `;
-}
-
-// ================================================================
-// GEMINI SETTINGS
-// ================================================================
-function openDeepSeekSettings() {
-  createModal('deepseekModal', '⚙️ Configurar Gemini', `
-    <div class="ai-message" style="margin-bottom:16px">
-      🌟 A API do Gemini é <strong>GRATUITA</strong>! Conecte-se para receber insights personalizados sobre seus treinos com IA avançada.
-    </div>
-    <div class="field">
-      <label>API Key do Gemini</label>
-      <input type="password" id="deepseek-key-input" placeholder="Cole sua API key aqui..." value="${geminiApiKey}">
-    </div>
-    <div style="font-size:12px;color:var(--t3);margin-bottom:16px">
-      Obtenha sua API key gratuita em <a href="https://aistudio.google.com/app/apikey" target="_blank" style="color:var(--blue)">aistudio.google.com/apikey</a>
-    </div>
-    <button class="btn-primary" onclick="saveDeepSeekKey()">Salvar</button>
-    ${geminiApiKey ? '<button class="btn-sm" style="width:100%;margin-top:10px" onclick="testDeepSeekKey()">🧪 Testar conexão</button>' : ''}
-    <div id="deepseek-status" style="margin-top:12px;font-size:13px;text-align:center"></div>
-  `);
-}
-
-function saveDeepSeekKey() {
-  const key = document.getElementById('deepseek-key-input').value.trim();
-  geminiApiKey = key;
-  localStorage.setItem('gemini_api_key', key);
-  toast(key ? '✅ API key salva!' : '🗑️ API key removida', '#34c759');
-  document.getElementById('deepseekModal').remove();
-  updateAIBadge();
-  getDeepSeekInsights();
-}
-
-async function testDeepSeekKey() {
-  const status = document.getElementById('deepseek-status');
-  status.textContent = '⏳ Testando...';
-  status.style.color = 'var(--t3)';
-  
-  const result = await callGemini('Responda apenas "OK" se receber isso.');
-  
-  if (result && result.toLowerCase().includes('ok')) {
-    status.textContent = '✅ Conexão bem-sucedida!';
-    status.style.color = 'var(--primary)';
-  } else {
-    status.textContent = '❌ Erro na conexão. Verifique a API key.';
-    status.style.color = 'var(--red)';
-  }
+  if (preview) preview.textContent = analysis.message;
 }
 
 // ================================================================
@@ -2598,101 +1976,81 @@ function refreshPage() {
 }
 
 // ================================================================
-// EXPORT / IMPORT
+// EXPORT / IMPORT - CORRIGIDOS
 // ================================================================
-function exportToFile(){
-  const dataStr=JSON.stringify(S,null,2);
-  const filename=`calistenia_backup_${new Date().toISOString().slice(0,19).replace(/:/g,'-')}.json`;
+function exportToFile() {
   try {
-    const blob=new Blob([dataStr],{type:'application/json'});
-    const url=URL.createObjectURL(blob);
-    const a=document.createElement('a'); a.href=url;
-    a.download=filename;
-    document.body.appendChild(a); a.click(); document.body.removeChild(a);
-    setTimeout(()=>URL.revokeObjectURL(url),1000);
+    const dataStr = JSON.stringify(S, null, 2);
+    const filename = `calistenia_backup_${new Date().toISOString().slice(0,19).replace(/:/g, '-')}.json`;
+    
+    // Método principal: blob
+    const blob = new Blob([dataStr], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    
+    toast('📁 Dados exportados!', '#34c759');
   } catch(e) {
-    // Fallback para data URI (funciona em mais contextos mobile)
-    const a=document.createElement('a');
-    a.href='data:application/json;charset=utf-8,'+encodeURIComponent(dataStr);
-    a.download=filename;
-    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    // Fallback para data URI (caso blob falhe)
+    const dataStr = JSON.stringify(S, null, 2);
+    const filename = `calistenia_backup_${new Date().toISOString().slice(0,19).replace(/:/g, '-')}.json`;
+    const a = document.createElement('a');
+    a.href = 'data:application/json;charset=utf-8,' + encodeURIComponent(dataStr);
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    toast('📁 Dados exportados (fallback)!', '#34c759');
   }
-  toast('📁 Dados exportados!','#34c759');
 }
 
-function importFromFile(){
-  closeAIMenu();
-  setTimeout(() => {
-    let fileInput = document.getElementById('hiddenFileImport');
-    if (!fileInput) {
-      fileInput = document.createElement('input');
-      fileInput.type = 'file';
-      fileInput.id = 'hiddenFileImport';
-      fileInput.accept = '.json';
-      fileInput.style.display = 'none';
-      document.body.appendChild(fileInput);
-    }
-    fileInput.value = '';
-    fileInput.onchange = function(e) {
-      const file = e.target.files[0]; 
-      if (!file) return;
-      const reader = new FileReader();
-      reader.onload = function(ev) {
-        try {
-          const imported = JSON.parse(ev.target.result);
-          console.log('Importando dados:', imported);
-          
-          // Validar estrutura do JSON
-          if (!imported || typeof imported !== 'object') {
-            toast('Arquivo inválido: formato incorreto', '#ff3b30');
-            return;
-          }
-          
-          // Verificar se tem dados mínimos
-          const hasValidData = (imported.workouts && Array.isArray(imported.workouts)) || 
-                               (imported.restDays && Array.isArray(imported.restDays)) ||
-                               (imported.templates && Array.isArray(imported.templates));
-          
-          if (!hasValidData) {
-            console.log('Dados inválidos:', imported);
-            toast('Arquivo inválido: sem dados de treino', '#ff3b30');
-            return;
-          }
-          
-          if (confirm('Substituir dados atuais? Todos os seus dados serão sobrescritos.')) {
-            // Limpar estado completamente
-            S = {
-              workouts: Array.isArray(imported.workouts) ? imported.workouts : [],
-              restDays: Array.isArray(imported.restDays) ? imported.restDays : [],
-              templates: Array.isArray(imported.templates) ? imported.templates : [],
-              todayExercises: []
-            };
-            
-            save(); 
-            console.log('Dados importados com sucesso:', S);
-            updateContextCard(); 
+function importFromFile() {
+  const fileInput = document.getElementById('hiddenFileImport');
+  fileInput.value = ''; // reset para permitir mesmo arquivo novamente
+  
+  fileInput.onchange = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      try {
+        const imported = JSON.parse(ev.target.result);
+        // Validação básica da estrutura
+        if (imported && (Array.isArray(imported.workouts) || Array.isArray(imported.restDays) || Array.isArray(imported.templates))) {
+          if (confirm('Substituir todos os dados atuais? Esta ação não pode ser desfeita.')) {
+            S = imported;
+            // Garantir que todos os campos existam
+            if (!S.workouts) S.workouts = [];
+            if (!S.restDays) S.restDays = [];
+            if (!S.templates) S.templates = [];
+            if (!S.todayExercises) S.todayExercises = [];
+            save();
+            updateContextCard();
             renderAIInsights();
-            renderWeekStrip(); 
+            renderWeekStrip();
             updateWidgets();
-            toast('✅ Dados importados! Treinos: ' + S.workouts.length + ', Descansos: ' + S.restDays.length + ', Templates: ' + S.templates.length, '#34c759');
+            toast('✅ Dados importados com sucesso!', '#34c759');
           }
-        } catch (err) {
-          console.error('Erro no import:', err);
-          toast('Erro ao ler JSON: ' + err.message, '#ff3b30');
+        } else {
+          toast('Arquivo inválido: estrutura incorreta', '#ff3b30');
         }
-      };
-      reader.onerror = function() {
-        toast('Erro ao ler arquivo', '#ff3b30');
-      };
-      reader.readAsText(file);
+      } catch(err) {
+        console.error(err);
+        toast('Erro ao ler o arquivo JSON', '#ff3b30');
+      }
     };
-    fileInput.click();
-  }, 50);
+    reader.onerror = () => toast('Erro ao ler o arquivo', '#ff3b30');
+    reader.readAsText(file);
+  };
+  
+  fileInput.click();
 }
-
-// Tornar funções globais explicitamente para uso no onclick inline
-window.exportToFile = exportToFile;
-window.importFromFile = importFromFile;
 
 // ================================================================
 // TEMPLATES DEFAULT
@@ -2707,27 +2065,24 @@ if(!S.templates.length){
 }
 
 // ================================================================
-// INIT
+// INIT - Configuração dos listeners
 // ================================================================
-window.addEventListener('DOMContentLoaded', ()=>{
+window.addEventListener('DOMContentLoaded', () => {
   updateContextCard();
+  renderAIInsights();
   renderWeekStrip();
   updateWidgets();
-  calYear=new Date().getFullYear(); calMonth=new Date().getMonth();
+  calYear = new Date().getFullYear();
+  calMonth = new Date().getMonth();
   
-  setTimeout(() => {
-    if (geminiApiKey) {
-      getDeepSeekInsights();
-    } else {
-      renderAIInsights();
-    }
-  }, 100);
+  // Botões de export/import - garantir que funcionem
+  const exportBtn = document.getElementById('exportFileBtn');
+  const importBtn = document.getElementById('importFileBtn');
+  const refreshBtn = document.getElementById('refreshBtn');
   
-  // Garantir listeners de export/import após DOM pronto
-  const expBtn = document.getElementById('exportFileBtn');
-  const impBtn = document.getElementById('importFileBtn');
-  if(expBtn) expBtn.addEventListener('click', exportToFile);
-  if(impBtn) impBtn.addEventListener('click', importFromFile);
+  if (exportBtn) exportBtn.addEventListener('click', exportToFile);
+  if (importBtn) importBtn.addEventListener('click', importFromFile);
+  if (refreshBtn) refreshBtn.addEventListener('click', refreshPage);
 });
 </script>
 </body>
