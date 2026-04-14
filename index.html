@@ -1811,7 +1811,7 @@ function calculateDetailedStats() {
       if (history.length >= 3) {
         if (trend > 1) stats.trendingUp.push({exercise: ex, trend: Math.round(trend * 10) / 10});
         else if (trend < -1) stats.trendingDown.push({exercise: ex, trend: Math.round(trend * 10) / 10});
-        else stats.stagnant.push(exercise: ex);
+        else stats.stagnant.push({exercise: ex});
       }
       
       // Verificar se está acima da média
@@ -2640,27 +2640,49 @@ function importFromFile(){
       reader.onload = function(ev) {
         try {
           const imported = JSON.parse(ev.target.result);
-          if (imported && (imported.workouts || imported.restDays || imported.templates || imported.todayExercises)) {
-            if (confirm('Substituir dados atuais?')) {
-              S = imported;
-              if (!S.workouts) S.workouts = []; 
-              if (!S.restDays) S.restDays = []; 
-              if (!S.templates) S.templates = []; 
-              if (!S.todayExercises) S.todayExercises = [];
-              save(); 
-              updateContextCard(); 
-              if (geminiApiKey) getDeepSeekInsights(); else renderAIInsights();
-              renderWeekStrip(); 
-              updateWidgets();
-              toast('✅ Dados importados!', '#34c759');
-            }
-          } else {
-            console.log('Imported data:', imported);
-            toast('Arquivo inválido', '#ff3b30');
+          console.log('Importando dados:', imported);
+          
+          // Validar estrutura do JSON
+          if (!imported || typeof imported !== 'object') {
+            toast('Arquivo inválido: formato incorreto', '#ff3b30');
+            return;
+          }
+          
+          // Verificar se tem dados mínimos
+          const hasValidData = (imported.workouts && Array.isArray(imported.workouts)) || 
+                               (imported.restDays && Array.isArray(imported.restDays)) ||
+                               (imported.templates && Array.isArray(imported.templates));
+          
+          if (!hasValidData) {
+            console.log('Dados inválidos:', imported);
+            toast('Arquivo inválido: sem dados de treino', '#ff3b30');
+            return;
+          }
+          
+          if (confirm('Substituir dados atuais? Todos os seus dados serão sobrescritos.')) {
+            // Limpar estado completamente
+            S = {
+              workouts: Array.isArray(imported.workouts) ? imported.workouts : [],
+              restDays: Array.isArray(imported.restDays) ? imported.restDays : [],
+              templates: Array.isArray(imported.templates) ? imported.templates : [],
+              todayExercises: []
+            };
+            
+            save(); 
+            console.log('Dados importados com sucesso:', S);
+            updateContextCard(); 
+            renderAIInsights();
+            renderWeekStrip(); 
+            updateWidgets();
+            toast('✅ Dados importados! Treinos: ' + S.workouts.length + ', Descansos: ' + S.restDays.length + ', Templates: ' + S.templates.length, '#34c759');
           }
         } catch (err) {
-          toast('Erro ao ler JSON', '#ff3b30');
+          console.error('Erro no import:', err);
+          toast('Erro ao ler JSON: ' + err.message, '#ff3b30');
         }
+      };
+      reader.onerror = function() {
+        toast('Erro ao ler arquivo', '#ff3b30');
       };
       reader.readAsText(file);
     };
